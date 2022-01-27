@@ -470,7 +470,7 @@ elif args.dataset_name == 'Solar':
     if args.lr_inf == -1: args.lr_inf = 0.001
 
 elif args.dataset_name == 'electricity':
-    if args.epochs == -1: args.epochs = 20
+    if args.epochs == -1: args.epochs = 50
     if args.N_input == -1: args.N_input = 336
     if args.N_output == -1: args.N_output = 168
     #args.K_list = [12]
@@ -551,8 +551,33 @@ elif args.dataset_name == 'foodinflation':
     if args.cv_inf == -1: args.cv_inf = 1
     if args.lr_inf == -1: args.lr_inf = 0.01
 
+elif args.dataset_name == 'outlier':
+    if args.epochs == -1: args.epochs = 50
+    if args.N_input == -1: args.N_input = 100
+    if args.N_output == -1: args.N_output = 50
+    #args.K_list = [12]
+    if args.K_list == []: args.K_list = []
+    if args.saved_models_dir is None:
+        args.saved_models_dir = 'saved_models/saved_models_outlier'
+    if args.output_dir is None:
+        args.output_dir = 'Outputs/Outputs_foodinflation'
+    if args.normalize is None: args.normalize = 'zscore_per_series'
+    if args.learning_rate == -1: args.learning_rate = 0.0001
+    if args.batch_size == -1: args.batch_size = 64
+    if args.hidden_size == -1: args.hidden_size = 128
+    if args.num_grulstm_layers == -1: args.num_grulstm_layers = 1
+    if args.v_dim == -1: args.v_dim = 4
+    if args.b == -1: args.b = 4
+    if args.use_feats == -1: args.use_feats = 1
+    if args.device is None: args.device = 'cuda:1'
+    if args.cv_inf == -1: args.cv_inf = 1
+    if args.lr_inf == -1: args.lr_inf = 0.01
+    if args.n_quant == -1: args.n_quant = 1
+    if args.initialization == -1: args.initialization = 0.0
+
+
 elif args.dataset_name == 'telemetry':
-    if args.epochs == -1: args.epochs = 20
+    if args.epochs == -1: args.epochs = 50
     if args.N_input == -1: args.N_input = 90
     if args.N_output == -1: args.N_output = 30
     #args.K_list = [12]
@@ -562,9 +587,9 @@ elif args.dataset_name == 'telemetry':
     if args.output_dir is None:
         args.output_dir = 'Outputs_telemetry'
     if args.normalize is None: args.normalize = 'zscore_per_series'
-    if args.learning_rate == -1: args.learning_rate = 0.0001
+    if args.learning_rate == -1: args.learning_rate = 0.001
     if args.batch_size == -1: args.batch_size = 64
-    if args.hidden_size == -1: args.hidden_size = 128
+    if args.hidden_size == -1: args.hidden_size = 256
     if args.num_grulstm_layers == -1: args.num_grulstm_layers = 1
     if args.v_dim == -1: args.v_dim = 4
     if args.b == -1: args.b = 4

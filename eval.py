@@ -143,7 +143,7 @@ def eval_base_model(args, model_name, net, loader, norm, gamma, verbose=1, unnor
     #import pdb;pdb.set_trace()
     # MSE
     print('in eval ', target.shape, pred_mu.shape)
-    
+    # import pdb;pdb.set_trace()
     loss_mse = criterion(target, pred_mu).item()    ### Need to verify here 
     loss_mae = criterion_mae(target, pred_mu).item()
 
@@ -205,10 +205,10 @@ def eval_base_model(args, model_name, net, loader, norm, gamma, verbose=1, unnor
         dist = torch.distributions.normal.Normal(pred_mu, pred_std)
         loss_nll = -torch.mean(dist.log_prob(target)).item()
 
-    quantiles = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], dtype=torch.float)
+    # quantiles = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], dtype=torch.float)
     #quantiles = torch.tensor([0.1, 0.5, 0.9], dtype=torch.float)
     #quantiles = torch.tensor([0.45, 0.5, 0.55], dtype=torch.float)
-    #quantiles = torch.tensor([0.5], dtype=torch.float)
+    quantiles = torch.tensor([0.9], dtype=torch.float)
     quantile_weights = torch.ones_like(quantiles, dtype=torch.float)
     #quantile_weights = torch.tensor([1., 1., 1.], dtype=torch.float)
 
@@ -316,6 +316,7 @@ def eval_index_model(args, model_name, net, loader, norm, gamma, N_input, N_outp
 
     # MSE
     print(target.shape, pred_mu.shape)
+    # import pdb;pdb.set_trace()
     metric_mse_idx = criterion(target_gaps, pred_mu_gaps).item()
     metric_mse = criterion(target, pred_mu).item()
     metric_mae_idx = criterion_mae(target_gaps, pred_mu_gaps).item()
@@ -412,6 +413,7 @@ def eval_inf_index_model(
         pred_std = torch.ones_like(pred_mu) * 1e-9
 
     # MSE
+    # import pdb;pdb.set_trace()
     loss_mse = criterion(target, pred_mu)
     loss_mae = criterion_mae(target, pred_mu)
     loss_dtw, loss_tdi = 0,0
@@ -504,6 +506,7 @@ def eval_inf_model_bak(
         pred_v = torch.ones_like(pred_mu) * 1e-9
 
     # MSE
+    # import pdb;pdb.set_trace()
     loss_mse = criterion(target, pred_mu)
     loss_mae = criterion_mae(target, pred_mu)
     loss_smape = 200. * ((torch.abs(target-pred_mu)) / (torch.abs(target) + torch.abs(pred_mu))).mean()
@@ -633,6 +636,7 @@ def eval_inf_model(args, net, dataset, which_split, gamma, verbose=1):
     #     target = utils.get_inputs_median(inputs.unsqueeze(-1), target)
 
     # MSE
+    # import pdb;pdb.set_trace()
     loss_mse = criterion(target, pred_mu)
     loss_mae = criterion_mae(target, pred_mu)
     loss_smape = 200. * ((torch.abs(target-pred_mu)) / (torch.abs(target) + torch.abs(pred_mu))).mean()

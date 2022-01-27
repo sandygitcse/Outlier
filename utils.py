@@ -14,7 +14,7 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 import time
 
 from data.synthetic_dataset import create_synthetic_dataset, create_sin_dataset, SyntheticDataset
-from data.real_dataset import parse_ECG5000, parse_Traffic, parse_Taxi, parse_Traffic911, parse_gc_datasets, parse_weather, parse_bafu, parse_meteo, parse_azure, parse_ett, parse_sin_noisy, parse_Solar, parse_etthourly, parse_m4hourly, parse_m4daily, parse_taxi30min, parse_aggtest, parse_electricity, parse_foodinflation, parse_telemetry
+from data.real_dataset import parse_ECG5000, parse_Traffic, parse_Taxi, parse_Traffic911, parse_gc_datasets, parse_weather, parse_bafu, parse_meteo, parse_azure, parse_ett, parse_sin_noisy, parse_Solar, parse_etthourly, parse_m4hourly, parse_m4daily, parse_taxi30min, parse_aggtest, parse_electricity, parse_foodinflation, parse_telemetry,parse_synthetic
 
 
 to_float_tensor = lambda x: torch.FloatTensor(x.copy())
@@ -963,6 +963,12 @@ class DataProcessor(object):
                 dev_tsid_map, test_tsid_map,
                 feats_info
             ) = parse_telemetry(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
+        elif args.dataset_name in ['outlier']:
+            (
+                data_train, data_dev, data_test,
+                dev_tsid_map, test_tsid_map,
+                feats_info
+            ) = parse_synthetic(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
 
 
         if args.use_feats:

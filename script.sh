@@ -139,14 +139,14 @@
 #	--cv_inf 0 \
 #	--device cuda:1
 #
-#python main.py electricity \
-#	--N_input 336 --N_output 168 \
-#	--saved_models_dir aaai_saved_models_electricity_e336_d168_testprune_2_rp \
-#	--output_dir aaai_Outputs_electricity_e336_d168_testprune_2_rp \
-#	--K_list 1 2 6 12 \
-#	--cv_inf 0 \
-#	--device cuda:1
-
+python main.py electricity \
+	--N_input 336 --N_output 168 \
+	--saved_models_dir saved_models/electricity_0.5 \
+	--output_dir Outputs/Outputs_electricity_0.5 \
+	--K_list 1 \
+	--cv_inf 0 \
+	--device cuda:1 \
+	--n_quant 9
 # python main.py foodinflation \
 # 	--N_input 90 --N_output 30 \
 # 	--saved_models_dir saved_models_foodinflation \
@@ -156,14 +156,23 @@
 # 	--device cuda:1 \
 	
 
-python3 main.py telemetry \
-	--N_input 365 --N_output 30 \
-	--saved_models_dir saved_models_telemetry_fix \
-	--output_dir Outputs_telemetry_fix \
-	--K_list 1 \
-	--cv_inf 0 \
-	--device cuda:0 \
-	--n_quant 9
+# python3 main.py telemetry \
+# 	--N_input 365 --N_output 100 \
+# 	--saved_models_dir saved_models_telemetry_fix_D \
+# 	--output_dir Outputs_telemetry_fix_D \
+# 	--K_list 1 \
+# 	--cv_inf 0 \
+# 	--device cuda:1 \
+# 	--n_quant 9
+
+# python3 main.py outlier \
+# 	--N_input 100 --N_output 50 \
+# 	--saved_models_dir saved_models/saved_models_synthetic_out_n \
+# 	--output_dir Outputs/Outputs_synthetic_out_check_n \
+# 	--K_list 1 \
+# 	--cv_inf 0 \
+# 	--device cuda:1\
+# 	--n_quant 9
 
 # Commands for Oracle and SimRetrieval
 #python main.py ett \
