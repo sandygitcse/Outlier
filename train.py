@@ -270,8 +270,8 @@ def train_model(
                 )(target, means, stds)
 
             if model_name in ['trans-q-ar']:
-                # quantiles = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], dtype=torch.float)
-                quantiles = torch.tensor([0.1, 0.5, 0.9], dtype=torch.float)
+                quantiles = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], dtype=torch.float)
+                # quantiles = torch.tensor([0.1, 0.5, 0.9], dtype=torch.float)
                 #quantiles = torch.tensor([0.45, 0.5, 0.55], dtype=torch.float)
                 # quantiles = torch.tensor([0.5], dtype=torch.float)
                 
