@@ -42,21 +42,25 @@ class QuantileLoss(torch.nn.Module):
         for i, q in enumerate(self.quantiles):
 
             errors = target - pred[...,i]
-            # IQR = iqr(errors.cpu().detach().numpy())
-            # fq,tq = np.nanpercentile(errors.cpu().detach().numpy(),(25,75))
-            # # errors = torch.where((fq-IQR*1.5)<errors.cpu()<(tq+IQR*1.5),errors.cpu(),torch.tensor(0.))
-            # errors = torch.where(errors.cpu()<=(tq+IQR*1.5),errors.cpu(),torch.tensor(0.))
-            # errors = torch.where(errors.cpu()>=(fq-IQR*1.5),errors.cpu(),torch.tensor(0.))
+            
             # # pdb.set_trace()
-            losses.append(
-                torch.max(
+            clipped_error = torch.max(
                    (q-1) * errors, 
                    q * errors
-            ) )
+            )
+            IQR = iqr(torch.tensor(clipped_error).cpu())
+
+            fq,tq = np.nanpercentile(torch.tensor(clipped_error).cpu(),(25,75))
+            # errors = torch.where((fq-IQR*1.5)<errors.cpu()<(tq+IQR*1.5),errors.cpu(),torch.tensor(0.))
+            # clipped_error = torch.where(clipped_error.cpu()<=(tq+IQR*1.5),clipped_error.cpu(),torch.tensor(0.))
+            # clipped_error = torch.where(clipped_error.cpu()>=(fq-IQR*1.5),clipped_error.cpu(),torch.tensor(0.))
+            clipped_error = torch.clip(clipped_error,min = (fq-IQR*1.5),max = (tq+IQR*1.5))
+            losses.append(clipped_error)
         #loss = torch.mean(
         #    torch.sum(torch.cat(losses, dim=1), dim=1))
+        # import pdb; pdb.set_trace()
+        
         loss = torch.mean(torch.cat(losses, dim=1))
-        #import pdb; pdb.set_trace()
         return loss
 
 
