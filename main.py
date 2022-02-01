@@ -206,7 +206,7 @@ args.base_model_names = [
 args.aggregate_methods = [
     'sum',
 #    'sumwithtrend',
-    'slope',
+#    'slope',
 #    'haar',
 #    'wavelet'
 ]
