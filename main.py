@@ -1,3 +1,4 @@
+from pdb import set_trace
 import sys
 import os
 import argparse
@@ -565,6 +566,7 @@ dataset[agg_method][level] = data_processor.get_processed_data(args, agg_method,
 # ----- End : Load all datasets ----- #
 
 # ----- Start: base models training ----- #
+# set_trace()
 for base_model_name in args.base_model_names:
     base_models[base_model_name] = {}
     base_models_preds[base_model_name] = {}
@@ -586,7 +588,7 @@ for base_model_name in args.base_model_names:
     output_size = level2data['output_size']
     dev_norm = level2data['dev_norm']
     test_norm = level2data['test_norm']
-
+    
     if base_model_name in [
         'seq2seqmse', 'seq2seqdilate', 'convmse', 'convmsenonar',
         'rnn-mse-nar', 'rnn-mse-ar', 'trans-mse-nar', 'nbeats-mse-nar',
@@ -628,6 +630,7 @@ for base_model_name in args.base_model_names:
     if agg_method in ['sumwithtrend', 'slope', 'wavelet', 'haar'] and level == 1:
         base_models[base_model_name][agg_method][level] = base_models[base_model_name]['sum'][1]
     else:
+        # import pdb;pdb.set_trace()
         if base_model_name not in ['oracle', 'oracleforecast']:
             train_model(
                 args, base_model_name, net_gru,

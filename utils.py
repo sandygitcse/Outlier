@@ -12,7 +12,7 @@ import shutil
 from tsmoothie.smoother import SpectralSmoother, ExponentialSmoother
 from statsmodels.tsa.seasonal import seasonal_decompose
 import time
-
+from pdb import set_trace
 from data.synthetic_dataset import create_synthetic_dataset, create_sin_dataset, SyntheticDataset
 from data.real_dataset import parse_ECG5000, parse_Traffic, parse_Taxi, parse_Traffic911, parse_gc_datasets, parse_synthetic, parse_weather, parse_bafu, parse_meteo, parse_azure, parse_ett, parse_sin_noisy, parse_Solar, parse_etthourly, parse_m4hourly, parse_m4daily, parse_taxi30min, parse_aggtest, parse_electricity, parse_foodinflation, parse_telemetry,parse_synthetic
 
@@ -113,12 +113,13 @@ class Normalizer(object):
         super(Normalizer, self).__init__()
         self.norm_type = norm_type
         self.N = len(data)
+        
         if norm_type in ['same']:
             pass
         elif norm_type in ['zscore_per_series']:
             self.mean = map(lambda x: x.mean(0, keepdims=True), data) #data.mean(1, keepdims=True)
             self.std = map(lambda x: x.std(0, keepdims=True), data) #data.std(1, keepdims=True)
-            #import ipdb ; ipdb.set_trace()
+            import ipdb
             self.mean = torch.stack(list(self.mean), dim=0)
             self.std = torch.stack(list(self.std), dim=0)
             self.std = self.std.clamp(min=1., max=None)
@@ -154,6 +155,8 @@ class Normalizer(object):
             data_norm = data
         elif self.norm_type in ['zscore_per_series']:
             if not is_var:
+                
+                # print(data-self.mean[ids]) ####
                 data_norm = (data - self.mean[ids]) / self.std[ids]
             else:
                 data_norm = data / self.std[ids]
@@ -496,9 +499,11 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         for i in range(0, len(data)):
             #print(i, len(data))
             ex = data[i]['target']
+            ex_i = data[i]['target_inj']
             ex_f = data[i]['feats']
             ex_len = len(ex)
             ex = ex[ ex_len%self.K: ]
+            ex_i = ex_i[ ex_len%self.K: ]
             ex_f = ex_f[ ex_len%self.K: ]
 
             #bp = np.arange(1,len(ex), 1)
@@ -508,11 +513,13 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
                 bp = [(i, self.K) for i in np.arange(0, len(ex), self.K)]
 
             ex_agg = ex
+            ex_i_agg = ex_i
             ex_f_agg = ex_f
 
             data_agg.append(
                 {
                     'target':ex_agg,
+                    'target_inj':ex_i_agg,
                     'feats':ex_f_agg,
                 }
             )
@@ -526,7 +533,7 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
             assert norm_type is not None
             data_for_norm = []
             for i in range(0, len(data)):
-                ex = data_agg[i]['target']
+                ex = data_agg[i]['target_inj']
                 data_for_norm.append(torch.FloatTensor(ex))
             #data_for_norm = to_float_tensor(data_for_norm).squeeze(-1)
 
@@ -615,10 +622,11 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         elif self.which_split in ['dev', 'test']:
             el = self.enc_len
             dl = self.dec_len
-
-        ex_input = self.data[ts_id]['target'][ pos_id : pos_id+el ]
+        # print(self.base_enc_len,self.base_dec_len,self.S)
+        ex_input = self.data[ts_id]['target_inj'][ pos_id : pos_id+el ]
         ex_target = self.data[ts_id]['target'][ pos_id+el : pos_id+el+dl ]
-        #print('after', ex_input.shape, ex_target.shape, ts_id, pos_id)
+        # print('after', ex_input.shape, ex_target.shape, ts_id, pos_id)
+        # import pdb;pdb.set_trace()
         if self.tsid_map is None:
             mapped_id = ts_id
         else:
@@ -887,14 +895,15 @@ class DataProcessor(object):
             K_list = args.K_list
  
  
-        # import pdb ; pdb.set_trace()
+        # set_trace()
         lazy_dataset_train = TimeSeriesDatasetOfflineAggregate(
             self.data_train, args.N_input, args.N_output,
             agg_method, K, which_split='train',
             norm_type=args.normalize,
             feats_info=self.feats_info,
         )
-        # import pdb;pdb.set_trace()
+
+        # set_trace()
         print('Number of chunks in train data:', len(lazy_dataset_train))
         norm = lazy_dataset_train.input_norm
         dev_norm, test_norm = norm, norm
@@ -943,17 +952,17 @@ class DataProcessor(object):
             train_shuffle = True
         trainloader = DataLoader(
             lazy_dataset_train, batch_size=batch_size, shuffle=True,
-            drop_last=False, num_workers=12, pin_memory=True,
+            drop_last=False, num_workers=0, pin_memory=True,
             #collate_fn=lazy_dataset_train.collate_fn
         )
         devloader = DataLoader(
             lazy_dataset_dev, batch_size=batch_size, shuffle=False,
-            drop_last=False, num_workers=12, pin_memory=True,
+            drop_last=False, num_workers=0, pin_memory=True,
             #collate_fn=lazy_dataset_dev.collate_fn
         )
         testloader = DataLoader(
             lazy_dataset_test, batch_size=batch_size, shuffle=False,
-            drop_last=False, num_workers=12, pin_memory=True,
+            drop_last=False, num_workers=0, pin_memory=True,
             #collate_fn=lazy_dataset_test.collate_fn
         )
         #import ipdb

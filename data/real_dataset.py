@@ -69,17 +69,20 @@ def get_date_range(start_string, freq, seq_len):
     return full_date_range
 
 
-def get_list_of_dict_format(data):
+def get_list_of_dict_format(data,inject):
     data_new = list()
-    for entry in data:
+    for entry,inj in zip(data,inject):
         entry_dict = dict()
         entry_dict['target'] = entry
+        entry_dict['target_inj']=inj
         data_new.append(entry_dict)
     return data_new
 
 def prune_dev_test_sequence(data, seq_len):
     for i in range(len(data)):
+        
         data[i]['target'] = data[i]['target'][-seq_len:]
+        data[i]['target_inj'] = data[i]['target_inj'][-seq_len:]
         data[i]['feats'] = data[i]['feats'][-seq_len:]
     return data
 
@@ -1521,18 +1524,27 @@ def parse_aggtest(dataset_name, N_input, N_output, t2v_type=None):
     )
 
 def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
+    from pdb import set_trace
     #df = pd.read_csv('data/electricity_load_forecasting_panama/continuous_dataset.csv')
     df = pd.read_csv(
+        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'continuous_dataset.csv')
+    )
+    df_inj   = pd.read_csv(
         os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'synthesized_electricity_0.5.csv')
     )
+
+
     data = df[['nat_demand']].to_numpy().T
+    data_inj = df_inj[['nat_demand']].to_numpy().T
+    # data_inj = data
 
     #n = data.shape[1]
     n = (1903 + 1) * 24 # Select first n=1904*24 entries because of non-stationarity in the data after first n values
     data = data[:, :n]
+    data_inj = data_inj[:, :n]
     df = df.iloc[:n]
 
-
+    # set_trace()
     units = n//N_output
     dev_len = int(0.2*units) * N_output
     test_len = int(0.2*units) * N_output
@@ -1562,30 +1574,34 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     feats = np.concatenate([feats_hod, feats_date], axis=-1)
 
     data = torch.tensor(data, dtype=torch.float)
+    data_inj = torch.tensor(data_inj, dtype=torch.float)
     feats = torch.tensor(feats, dtype=torch.float)
 
     data_train = data[:, :train_len]
+    data_inj_train = data_inj[:, :train_len]
     feats_train = feats[:, :train_len]
 
-    data_dev, data_test = [], []
+    data_dev, data_test,data_inj_dev,data_inj_test = [], [],[],[]
     feats_dev, feats_test = [], []
     dev_tsid_map, test_tsid_map = [], []
     for i in range(data.shape[0]):
         for j in range(train_len+N_output, train_len+dev_len+1, N_output):
             if j <= n:
+                data_inj_dev.append(data_inj[i,:j])
                 data_dev.append(data[i, :j])
                 feats_dev.append(feats[i, :j])
                 dev_tsid_map.append(i)
     for i in range(data.shape[0]):
         for j in range(train_len+dev_len+N_output, n+1, N_output):
             if j <= n:
+                data_inj_test.append(data_inj[i,:j])
                 data_test.append(data[i, :j])
                 feats_test.append(feats[i, :j])
                 test_tsid_map.append(i)
-
-    data_train = get_list_of_dict_format(data_train)
-    data_dev = get_list_of_dict_format(data_dev)
-    data_test = get_list_of_dict_format(data_test)
+    
+    data_train = get_list_of_dict_format(data_train,data_inj_train)
+    data_dev = get_list_of_dict_format(data_dev,data_inj_dev)
+    data_test = get_list_of_dict_format(data_test,data_inj_test)
 
     for i in range(len(data_train)):
         data_train[i]['feats'] = feats_train[i]
@@ -1593,16 +1609,15 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
         data_dev[i]['feats'] = feats_dev[i]
     for i in range(len(data_test)):
         data_test[i]['feats'] = feats_test[i]
-
     feats_info = {0:(24, 16)}
     i = len(feats_info)
     for j in range(i, data_train[0]['feats'].shape[-1]):
         feats_info[j] = (-1, -1)
 
-    seq_len = 2*N_input+N_output
-    data_dev = prune_dev_test_sequence(data_dev, seq_len)
+    seq_len = 2*N_input+N_output  #(336*2 + 168 = 840)
+    data_dev = prune_dev_test_sequence(data_dev, seq_len) #54 * 840
     data_test = prune_dev_test_sequence(data_test, seq_len)
-    # import pdb;pdb.set_trace()
+    # set_trace()
     return (
         data_train, data_dev, data_test, dev_tsid_map, test_tsid_map, feats_info
     )
