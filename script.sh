@@ -141,8 +141,8 @@
 #
 python main.py electricity \
 	--N_input 336 --N_output 168 \
-	--saved_models_dir saved_models/electricity_syn_0.5_testing_128_128 \
-	--output_dir Outputs/Outputs_electricity_syn_0.5_testing_128_128 \
+	--saved_models_dir electricity_syn_0.5_test_128 \
+	--output_dir Outputs_electricity_syn_0.5_test_128 \
 	--K_list 1 \
 	--cv_inf 0 \
 	--device cuda:0 \

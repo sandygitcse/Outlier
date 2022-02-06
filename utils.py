@@ -497,9 +497,11 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         for i in range(0, len(data)):
             #print(i, len(data))
             ex = data[i]['target']
+            ex_inj = data[i]['target_inj']
             ex_f = data[i]['feats']
             ex_len = len(ex)
             ex = ex[ ex_len%self.K: ]
+            ex_inj = ex_inj[ ex_len%self.K: ]
             ex_f = ex_f[ ex_len%self.K: ]
 
             #bp = np.arange(1,len(ex), 1)
@@ -508,56 +510,17 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
             elif which_split in ['dev', 'test']:
                 bp = [(i, self.K) for i in np.arange(0, len(ex), self.K)]
 
-            if self.K != 1:
-                ex_agg, ex_f_agg = [], []
-                for b in range(len(bp)):
-                    s, e = bp[b][0], bp[b][0]+bp[b][1]
-                    ex_agg.append(
-                        aggregate_window(
-                            ex[s:e].unsqueeze(0), self.a, False,
-                        )[0]
-                    )
-                #if self.aggregation_type in ['sum']:
-                #    for b in range(len(bp)):
-                #        s, e = bp[b][0], bp[b][0]+bp[b][1]
-                #        import ipdb ; ipdb.set_trace()
-                #        ex_agg.append(self.aggregate_data(ex[s:e]))
+            ex_agg = ex
+            ex_i_agg = ex_inj
+            ex_f_agg = ex_f
 
-                #elif self.aggregation_type in ['slope']:
-                #    for b in range(len(bp)):
-                #        s, e = bp[b][0], bp[b][0]+bp[b][1]
-                #        ex_agg.append(self.aggregate_data_slope(ex[s:e]))
-
-                #elif self.aggregation_type in ['haar']:
-                #    for b in range(len(bp)):
-                #        s, e = bp[b][0], bp[b][0]+bp[b][1]
-                #        ex_agg.append(self.aggregate_data_haar(ex[s:e]))
-
-                # Aggregating features
-                for b in range(len(bp)):
-                    s, e = bp[b][0], bp[b][0]+bp[b][1]
-                    ex_f_agg.append(self.aggregate_feats(ex_f[s:e]))
-
-                #if which_split in ['dev']:
-                #    import ipdb ; ipdb.set_trace()
-
-                data_agg.append(
-                    {
-                        'target':torch.cat(ex_agg, dim=0),
-                        'feats':torch.stack(ex_f_agg, dim=0),
-                    }
-                )
-
-            else:
-                ex_agg = ex
-                ex_f_agg = ex_f
-
-                data_agg.append(
-                    {
-                        'target':ex_agg,
-                        'feats':ex_f_agg,
-                    }
-                )
+            data_agg.append(
+                {
+                    'target':ex_agg,
+                    'target_inj':ex_i_agg,
+                    'feats':ex_f_agg,
+                }
+            )
         et = time.time()
         print(which_split, self.aggregation_type, self.K, 'total time:', et-st)
 
@@ -568,7 +531,7 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
             assert norm_type is not None
             data_for_norm = []
             for i in range(0, len(data)):
-                ex = data_agg[i]['target']
+                ex = data_agg[i]['target_inj']
                 data_for_norm.append(torch.FloatTensor(ex))
             #data_for_norm = to_float_tensor(data_for_norm).squeeze(-1)
 
@@ -593,7 +556,7 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
             if which_split in ['train']:
                 j = 0
                 while j < len(self.data[i]['target']):
-                    if j+self.mult*self.base_enc_len+self.base_dec_len <= len(self.data[i]['target']):
+                    if j+self.base_enc_len+self.base_dec_len <= len(self.data[i]['target']):
                         self.indices.append((i, j))
                     j += 1
                 #if self.K>1:
@@ -617,26 +580,20 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
 
     @property
     def enc_len(self):
-        if self.K > 1:
-            el = (self._base_enc_len // self.K) * self.mult
-        else:
-            el = self._base_enc_len
+        el = self._base_enc_len
         #el = self._base_enc_len
         return el
     
     @property
     def dec_len(self):
-        if self.K > 1:
-            dl = self._base_dec_len // self.K
-        else:
-            dl = self._base_dec_len
+        dl = self._base_dec_len
         return dl
 
-    @property
-    def mult(self):
-        if self.K > 1: mult = 2
-        else: mult = 1
-        return mult
+    # @property
+    # def mult(self):
+    #     if self.K > 1: mult = 2
+    #     else: mult = 1
+    #     return mult
 
     @property
     def input_size(self):
@@ -665,16 +622,16 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         pos_id = self.indices[idx][1]
 
         if self.which_split in ['train']:
-            stride, mult = self.K//self.S, self.mult
-            el = mult * self.base_enc_len // self.S
+            # stride, mult = self.K//self.S, self.mult
+            el = self.base_enc_len // self.S
             dl = self.base_dec_len // self.S
         elif self.which_split in ['dev', 'test']:
-            stride, mult = 1, 1
+            # stride, mult = 1, 1
             el = self.enc_len
             dl = self.dec_len
 
-        ex_input = self.data[ts_id]['target'][ pos_id : pos_id+el : stride ]
-        ex_target = self.data[ts_id]['target'][ pos_id+el : pos_id+el+dl : stride ]
+        ex_input = self.data[ts_id]['target_inj'][ pos_id : pos_id+el ]
+        ex_target = self.data[ts_id]['target'][ pos_id+el : pos_id+el+dl]
         #print('after', ex_input.shape, ex_target.shape, ts_id, pos_id)
         if self.tsid_map is None:
             mapped_id = ts_id
@@ -683,8 +640,8 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         ex_input = self.input_norm.normalize(ex_input, mapped_id)#.unsqueeze(-1)
         ex_target = self.target_norm.normalize(ex_target, mapped_id)#.unsqueeze(-1)
 
-        ex_input_feats = self.data[ts_id]['feats'][ pos_id : pos_id+el : stride ]
-        ex_target_feats = self.data[ts_id]['feats'][ pos_id+el : pos_id+el+dl : stride ]
+        ex_input_feats = self.data[ts_id]['feats'][ pos_id : pos_id+el ]
+        ex_target_feats = self.data[ts_id]['feats'][ pos_id+el : pos_id+el+dl ]
         ex_input_feats_norm = []
         ex_target_feats_norm = []
         for i in range(len(self.feats_info)):
@@ -1050,17 +1007,17 @@ class DataProcessor(object):
             train_shuffle = True
         trainloader = DataLoader(
             lazy_dataset_train, batch_size=batch_size, shuffle=True,
-            drop_last=False, num_workers=12, pin_memory=True,
+            drop_last=False, num_workers=0, pin_memory=True,
             #collate_fn=lazy_dataset_train.collate_fn
         )
         devloader = DataLoader(
             lazy_dataset_dev, batch_size=batch_size, shuffle=False,
-            drop_last=False, num_workers=12, pin_memory=True,
+            drop_last=False, num_workers=0, pin_memory=True,
             #collate_fn=lazy_dataset_dev.collate_fn
         )
         testloader = DataLoader(
             lazy_dataset_test, batch_size=batch_size, shuffle=False,
-            drop_last=False, num_workers=12, pin_memory=True,
+            drop_last=False, num_workers=0, pin_memory=True,
             #collate_fn=lazy_dataset_test.collate_fn
         )
         #import ipdb
