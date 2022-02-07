@@ -619,19 +619,19 @@ class ARQTransformerModel(nn.Module):
             d_model=nkernel, nhead=4, dropout=0, dim_feedforward=512
         )
         self.decoder_mean = nn.TransformerDecoder(self.decoder_layer, num_layers=2)
-        # if self.estimate_type in ['variance', 'covariance', 'bivariate']:
-        #     self.decoder_std = nn.TransformerDecoder(self.decoder_layer, num_layers=2)
-        # if self.estimate_type in ['bivariate']:
-        #     self.decoder_bv = nn.TransformerDecoder(self.decoder_layer, num_layers=2)
+        if self.estimate_type in ['variance', 'covariance', 'bivariate']:
+            self.decoder_std = nn.TransformerDecoder(self.decoder_layer, num_layers=2)
+        if self.estimate_type in ['bivariate']:
+            self.decoder_bv = nn.TransformerDecoder(self.decoder_layer, num_layers=2)
         #import pdb;pdb.set_trace()
 
         self.linear_mean = nn.Sequential(nn.ReLU(), nn.Linear(nkernel, n_quant))
-        # if self.estimate_type in ['variance', 'covariance', 'bivariate']:
-        #     self.linear_std = nn.Sequential(nn.ReLU(), nn.Linear(nkernel, 1))
-        # if self.estimate_type in ['covariance']:
-        #     self.linear_v = nn.Sequential(nn.ReLU(), nn.Linear(nkernel, self.v_dim))
-        # if self.estimate_type in ['bivariate']:
-        #     self.rho_layer = nn.Linear(nkernel, 2)
+        if self.estimate_type in ['variance', 'covariance', 'bivariate']:
+            self.linear_std = nn.Sequential(nn.ReLU(), nn.Linear(nkernel, 1))
+        if self.estimate_type in ['covariance']:
+            self.linear_v = nn.Sequential(nn.ReLU(), nn.Linear(nkernel, self.v_dim))
+        if self.estimate_type in ['bivariate']:
+            self.rho_layer = nn.Linear(nkernel, 2)
 
     def apply_signature(self, mean, X_in, feats_out, X_out):
         X_out = X_out - mean
@@ -866,14 +866,52 @@ class ARQTransformerModel(nn.Module):
         decoder_output = decoder_output.transpose(0,1)
         mean_out = self.linear_mean(decoder_output)
 
+        if self.estimate_type in ['variance', 'covariance', 'bivariate']:
+            X_pred = self.decoder_std(dec_input, encoder_output).clamp(min=0)
+            X_pred = X_pred.transpose(0,1)
+            std_out = F.softplus(self.linear_std(X_pred))
+            if self.estimate_type in ['covariance']:
+                v_out = self.linear_v(X_pred)
+            if self.estimate_type in ['bivariate']:
+                X_pred = self.decoder_bv(dec_input, encoder_output)
+                X_pred = X_pred.transpose(0,1)
+                rho_out = self.rho_layer(X_pred)
+                rho_out = rho_out[..., -self.dec_len:, :]
+                rho_1, rho_2 = rho_out[..., 1:, :], rho_out[..., :-1, :]
+                #rho_out = torch.einsum("ijk,ijk->ij", (rho_1, rho_2)).unsqueeze(-1)
+                rho_out = (rho_1 * rho_2).sum(dim=-1, keepdims=True)
+                #import ipdb ; ipdb.set_trace()
+                rho_out = torch.tanh(rho_out)
+            #import ipdb ; ipdb.set_trace()
         #mean_out = mean_out + mean        #mean removed
 
         
         #import pdb ; pdb.set_trace()
 
-        if self.estimate_type in ['point']:
-            return mean_out[..., -self.dec_len:, :]
-        
+        if self.is_signature:
+            signature_state = self.apply_signature(mean, X_in, feats_out, X_out)
+            decoder_output = decoder_output[..., -self.dec_len:, :]
+
+        #import ipdb ; ipdb.set_trace()
+
+        if self.is_signature:
+            if self.estimate_type in ['point']:
+                return mean_out[..., -self.dec_len:, :], decoder_output, signature_state
+            elif self.estimate_type in ['variance']:
+                return (mean_out[..., -self.dec_len:, :], std_out[..., -self.dec_len:, :], decoder_output, signature_state)
+            elif self.estimate_type in ['covariance']:
+                return (mean_out[..., -self.dec_len:, :], std_out[..., -self.dec_len:, :], v_out[..., -self.dec_len:, :], decoder_output, signature_state)
+            elif self.estimate_type in ['bivariate']:
+                return (mean_out[..., -self.dec_len:, :], std_out[..., -self.dec_len:, :], rho_out, decoder_output, signature_state)
+        else:
+            if self.estimate_type in ['point']:
+                return mean_out[..., -self.dec_len:, :]
+            elif self.estimate_type in ['variance']:
+                return (mean_out[..., -self.dec_len:, :], std_out[..., -self.dec_len:, :])
+            elif self.estimate_type in ['covariance']:
+                return (mean_out[..., -self.dec_len:, :], std_out[..., -self.dec_len:, :], v_out[..., -self.dec_len:, :])
+            elif self.estimate_type in ['bivariate']:
+                return (mean_out[..., -self.dec_len:, :], std_out[..., -self.dec_len:, :], rho_out)
 
 class ATRTransformerModel(nn.Module):
     def __init__(
