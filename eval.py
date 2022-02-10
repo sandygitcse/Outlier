@@ -1,3 +1,4 @@
+from bdb import set_trace
 import numpy as np
 import torch
 from tslearn.metrics import dtw, dtw_path
@@ -204,8 +205,17 @@ def eval_base_model(args, model_name, net, loader, norm, gamma, verbose=1, unnor
     elif net.estimate_type in ['variance', 'point', 'bivariate']:
         dist = torch.distributions.normal.Normal(pred_mu, pred_std)
         loss_nll = -torch.mean(dist.log_prob(target)).item()
-
-    quantiles = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], dtype=torch.float)
+    
+    if args.n_quant==9:
+        quantiles = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], dtype=torch.float)
+    if args.n_quant==3:
+        quantiles = torch.tensor([0.1, 0.5, 0.9], dtype=torch.float)
+        #quantiles = torch.tensor([0.45, 0.5, 0.55], dtype=torch.float)
+    if args.n_quant == 1:
+        quantiles = torch.tensor([0.5], dtype=torch.float)
+    # set_trace()
+    
+    # quantiles = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], dtype=torch.float)
     #quantiles = torch.tensor([0.1, 0.5, 0.9], dtype=torch.float)
     #quantiles = torch.tensor([0.45, 0.5, 0.55], dtype=torch.float)
     # quantiles = torch.tensor([0.5], dtype=torch.float)

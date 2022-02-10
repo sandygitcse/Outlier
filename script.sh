@@ -141,12 +141,13 @@
 #
 python main.py electricity \
 	--N_input 336 --N_output 168 \
-	--saved_models_dir testing/electricity_syn_0.5_test_without \
-	--output_dir testing/Outputs_electricity_syn_0.5_test_without \
+	--saved_models_dir testing/syn_without_3 \
+	--output_dir testing/output_syn_without_3 \
 	--K_list 1 \
 	--cv_inf 0 \
 	--device cuda:0 \
 	--n_quant 9
+    
 # python main.py foodinflation \
 # 	--N_input 90 --N_output 30 \
 # 	--saved_models_dir saved_models_foodinflation \

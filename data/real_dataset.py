@@ -1536,6 +1536,7 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
 
     data = df[['nat_demand']].to_numpy().T
     data_inj = df_inj[['nat_demand']].to_numpy().T
+
     # data_inj = data
 
     #n = data.shape[1]

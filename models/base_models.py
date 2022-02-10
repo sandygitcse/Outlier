@@ -883,7 +883,7 @@ class ARQTransformerModel(nn.Module):
                 #import ipdb ; ipdb.set_trace()
                 rho_out = torch.tanh(rho_out)
             #import ipdb ; ipdb.set_trace()
-        #mean_out = mean_out + mean        #mean removed
+        mean_out = mean_out + mean        #mean removed
 
         
         #import pdb ; pdb.set_trace()

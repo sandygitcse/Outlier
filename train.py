@@ -53,9 +53,9 @@ class QuantileLoss(torch.nn.Module):
             # IQR = iqr(torch.tensor(clipped_error).cpu())
 
             # fq,tq = np.nanpercentile(torch.tensor(clipped_error).cpu(),(25,75))
-            # errors = torch.where((fq-IQR*1.5)<errors.cpu()<(tq+IQR*1.5),errors.cpu(),torch.tensor(0.))
-            # clipped_error = torch.where(clipped_error.cpu()<=(tq+IQR*1.5),clipped_error.cpu(),torch.tensor(0.))
-            # clipped_error = torch.where(clipped_error.cpu()>=(fq-IQR*1.5),clipped_error.cpu(),torch.tensor(0.))
+            # # errors = torch.where((fq-IQR*1.5)<errors.cpu()<(tq+IQR*1.5),errors.cpu(),torch.tensor(0.))
+            # # clipped_error = torch.where(clipped_error.cpu()<=(tq+IQR*1.5),clipped_error.cpu(),torch.tensor(0.))
+            # # clipped_error = torch.where(clipped_error.cpu()>=(fq-IQR*1.5),clipped_error.cpu(),torch.tensor(0.))
             # clipped_error = torch.clip(clipped_error,min = (fq-IQR*1.5),max = (tq+IQR*1.5))
             losses.append(clipped_error)
         #loss = torch.mean(
@@ -265,10 +265,15 @@ def train_model(
                     loss += criterion(target, means)
 
             if model_name in ['trans-q-nar', 'rnn-q-nar', 'rnn-q-ar']:
-                quantiles = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], dtype=torch.float)
-                # quantiles = torch.tensor([0.1, 0.5, 0.9], dtype=torch.float)
-                #quantiles = torch.tensor([0.45, 0.5, 0.55], dtype=torch.float)
-                # quantiles = torch.tensor([0.5],dtype=torch.float)
+                
+                if args.n_quant==9:
+                    quantiles = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], dtype=torch.float)
+                if args.n_quant==3:
+                    quantiles = torch.tensor([0.1, 0.5, 0.9], dtype=torch.float)
+                    #quantiles = torch.tensor([0.45, 0.5, 0.55], dtype=torch.float)
+                if args.n_quant == 1:
+                    quantiles = torch.tensor([0.5], dtype=torch.float)
+                
                 quantile_weights = torch.ones_like(quantiles, dtype=torch.float)
                 #quantile_weights = torch.tensor([1., 1., 1.], dtype=torch.float)
                 loss = QuantileLoss(
@@ -276,10 +281,15 @@ def train_model(
                 )(target, means, stds)
 
             if model_name in ['trans-q-ar']:
-                quantiles = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], dtype=torch.float)
-                # quantiles = torch.tensor([0.1, 0.5, 0.9], dtype=torch.float)
-                #quantiles = torch.tensor([0.45, 0.5, 0.55], dtype=torch.float)
-                # quantiles = torch.tensor([0.5], dtype=torch.float)
+                # set_trace()
+                
+                if args.n_quant==9:
+                    quantiles = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], dtype=torch.float)
+                if args.n_quant==3:
+                    quantiles = torch.tensor([0.1, 0.5, 0.9], dtype=torch.float)
+                    #quantiles = torch.tensor([0.45, 0.5, 0.55], dtype=torch.float)
+                if args.n_quant == 1:
+                    quantiles = torch.tensor([0.5], dtype=torch.float)
                 
                 
                 quantile_weights = torch.ones_like(quantiles, dtype=torch.float)

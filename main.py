@@ -482,7 +482,7 @@ elif args.dataset_name == 'electricity':
     if args.normalize is None: args.normalize = 'zscore_per_series'
     if args.learning_rate == -1: args.learning_rate = 0.0001
     if args.batch_size == -1: args.batch_size = 128
-    if args.hidden_size == -1: args.hidden_size = 128
+    if args.hidden_size == -1: args.hidden_size = 256
     if args.num_grulstm_layers == -1: args.num_grulstm_layers = 1
     if args.v_dim == -1: args.v_dim = 4
     if args.b == -1: args.b = 4
@@ -729,7 +729,7 @@ for base_model_name in args.base_model_names:
             if args.save_agg_preds and level>=1:
                 testloader = level2data['testloader']
                 test_norm = level2data['test_norm']
-                print(agg_method, level, level2data['N_output'])
+                # print(agg_method, level, level2data['N_output'])
                 (
                     test_inputs, test_target, pred_mu, pred_std,
                     metric_dilate, metric_mse, metric_dtw, metric_tdi,
