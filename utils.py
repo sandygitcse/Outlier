@@ -15,10 +15,18 @@ import time
 from pdb import set_trace
 from data.synthetic_dataset import create_synthetic_dataset, create_sin_dataset, SyntheticDataset
 from data.real_dataset import parse_ECG5000, parse_Traffic, parse_Taxi, parse_Traffic911, parse_gc_datasets, parse_synthetic, parse_weather, parse_bafu, parse_meteo, parse_azure, parse_ett, parse_sin_noisy, parse_Solar, parse_etthourly, parse_m4hourly, parse_m4daily, parse_taxi30min, parse_aggtest, parse_electricity, parse_foodinflation, parse_telemetry,parse_synthetic
-
+torch.backends.cudnn.deterministic = True
 
 to_float_tensor = lambda x: torch.FloatTensor(x.copy())
 to_long_tensor = lambda x: torch.FloatTensor(x.copy())
+
+def seed_worker(worker_id):
+    # worker_seed = torch.initial_seed() % 2**32
+    worket_seed = 0
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
+
+
 
 def copy_and_overwrite(from_path, to_path):
     if os.path.exists(to_path):
@@ -950,19 +958,21 @@ class DataProcessor(object):
             train_shuffle = False
         else:
             train_shuffle = True
+        g = torch.Generator()
+        g.manual_seed(0)    
         trainloader = DataLoader(
             lazy_dataset_train, batch_size=batch_size, shuffle=True,
-            drop_last=False, num_workers=0, pin_memory=True,
+            drop_last=False, num_workers=0, pin_memory=True,generator=g,worker_init_fn=seed_worker,
             #collate_fn=lazy_dataset_train.collate_fn
         )
         devloader = DataLoader(
             lazy_dataset_dev, batch_size=batch_size, shuffle=False,
-            drop_last=False, num_workers=0, pin_memory=True,
+            drop_last=False, num_workers=0, pin_memory=True,generator=g,worker_init_fn=seed_worker,
             #collate_fn=lazy_dataset_dev.collate_fn
         )
         testloader = DataLoader(
             lazy_dataset_test, batch_size=batch_size, shuffle=False,
-            drop_last=False, num_workers=0, pin_memory=True,
+            drop_last=False, num_workers=0, pin_memory=True,generator=g,worker_init_fn=seed_worker,
             #collate_fn=lazy_dataset_test.collate_fn
         )
         #import ipdb

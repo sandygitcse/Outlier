@@ -264,7 +264,17 @@ def train_model(
             epoch_loss += loss.item()
 
             optimizer.zero_grad()
+            # set_trace()
+            
             loss.backward()
+            # # total_norm = 0
+            # # parameters = [p for p in net.parameters() if p.grad is not None and p.requires_grad]
+            # # for p in parameters:
+            # #     param_norm = p.grad.detach().data.norm(2)
+            # #     total_norm += param_norm.item() ** 2
+            # # total_norm = total_norm ** 0.5
+            # # set_trace()
+            # torch.nn.utils.clip_grad_norm(net.parameters(),total_norm)
             optimizer.step()
             et = time.time()
             epoch_time += (et-st)

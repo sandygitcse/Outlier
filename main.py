@@ -187,8 +187,8 @@ args.base_model_names = [
 #    'rnn-mse-ar',
 #    'rnn-nll-ar',
    'trans-mse-ar',
-     'trans-huber-ar',
-    'trans-nll-ar',
+    #  'trans-huber-ar',
+    # 'trans-nll-ar',
 #    'trans-bvnll-ar',
 #    'trans-nll-atr',
 #    'trans-fnll-ar',
@@ -400,7 +400,7 @@ elif args.dataset_name == 'Solar':
     if args.lr_inf == -1: args.lr_inf = 0.001
 
 elif args.dataset_name == 'electricity':
-    if args.epochs == -1: args.epochs = 20
+    if args.epochs == -1: args.epochs = 2
     if args.N_input == -1: args.N_input = 336
     if args.N_output == -1: args.N_output = 168
     #args.K_list = [12]
