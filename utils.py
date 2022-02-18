@@ -16,7 +16,7 @@ import time
 from data.synthetic_dataset import create_synthetic_dataset, create_sin_dataset, SyntheticDataset
 from data.real_dataset import parse_ECG5000, parse_Traffic, parse_Taxi, parse_Traffic911, parse_gc_datasets, parse_weather, parse_bafu, parse_meteo, parse_azure, parse_ett, parse_sin_noisy, parse_Solar, parse_etthourly, parse_m4hourly, parse_m4daily, parse_taxi30min, parse_aggtest, parse_electricity, parse_foodinflation, parse_telemetry,parse_synthetic
 
-
+torch.backends.cudnn.deterministic = True
 to_float_tensor = lambda x: torch.FloatTensor(x.copy())
 to_long_tensor = lambda x: torch.FloatTensor(x.copy())
 
@@ -629,8 +629,9 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
             # stride, mult = 1, 1
             el = self.enc_len
             dl = self.dec_len
-
-        ex_input = self.data[ts_id]['target_inj'][ pos_id : pos_id+el ]
+        ex_input = self.data[ts_id]['target'][ pos_id : pos_id+el ]
+        if self.which_split in ['test']:
+            ex_input = self.data[ts_id]['target_inj'][ pos_id : pos_id+el ]
         ex_target = self.data[ts_id]['target'][ pos_id+el : pos_id+el+dl]
         #print('after', ex_input.shape, ex_target.shape, ts_id, pos_id)
         if self.tsid_map is None:

@@ -32,7 +32,7 @@ os.environ["TUNE_GLOBAL_CHECKPOINT_S"] = "1000000"
 random.seed(0)
 torch.manual_seed(0)
 np.random.seed(0)
-
+torch.backends.cudnn.deterministic = True
 parser = argparse.ArgumentParser()
 
 parser.add_argument('dataset_name', type=str, help='dataset_name')

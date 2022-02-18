@@ -11,6 +11,7 @@ import random
 from scipy.stats import iqr
 from torch.distributions.normal import Normal
 from ipdb import set_trace
+torch.backends.cudnn.deterministic = True
 class QuantileLoss(torch.nn.Module):
     def __init__(self, quantiles, quantile_weights):
         super().__init__()
@@ -50,13 +51,13 @@ class QuantileLoss(torch.nn.Module):
             )
 
             # set_trace()
-            # IQR = iqr(torch.tensor(clipped_error).cpu())
+            IQR = iqr(torch.tensor(clipped_error).cpu())
 
-            # fq,tq = np.nanpercentile(torch.tensor(clipped_error).cpu(),(25,75))
-            # # errors = torch.where((fq-IQR*1.5)<errors.cpu()<(tq+IQR*1.5),errors.cpu(),torch.tensor(0.))
+            fq,tq = np.nanpercentile(torch.tensor(clipped_error).cpu(),(25,75))
+            # #errors = torch.where((fq-IQR*1.5)<errors.cpu()<(tq+IQR*1.5),errors.cpu(),torch.tensor(0.))
             # # clipped_error = torch.where(clipped_error.cpu()<=(tq+IQR*1.5),clipped_error.cpu(),torch.tensor(0.))
             # # clipped_error = torch.where(clipped_error.cpu()>=(fq-IQR*1.5),clipped_error.cpu(),torch.tensor(0.))
-            # clipped_error = torch.clip(clipped_error,min = (fq-IQR*1.5),max = (tq+IQR*1.5))
+            clipped_error = torch.clip(clipped_error,min = (fq-IQR*1.5),max = (tq+IQR*1.5))
             losses.append(clipped_error)
         #loss = torch.mean(
         #    torch.sum(torch.cat(losses, dim=1), dim=1))
