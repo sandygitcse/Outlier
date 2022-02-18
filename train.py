@@ -11,6 +11,8 @@ from utils import DataProcessor, get_inputs_median
 import random
 from torch.distributions.normal import Normal
 from pdb import set_trace
+torch.backends.cudnn.deterministic = True
+
 class QuantileLoss(torch.nn.Module):
     def __init__(self, quantiles, quantile_weights):
         super().__init__()
@@ -267,14 +269,14 @@ def train_model(
             # set_trace()
             
             loss.backward()
-            # total_norm = 0
-            # parameters = [p for p in net.parameters() if p.grad is not None and p.requires_grad]
-            # for p in parameters:
-            #     param_norm = p.grad.detach().data.norm(2)
-            #     total_norm += param_norm.item() ** 2
-            # total_norm = total_norm ** 0.5
+            total_norm = 0
+            parameters = [p for p in net.parameters() if p.grad is not None and p.requires_grad]
+            for p in parameters:
+                param_norm = p.grad.detach().data.norm(2)
+                total_norm += param_norm.item() ** 2
+            total_norm = total_norm ** 0.5
             
-            # torch.nn.utils.clip_grad_norm(net.parameters(),total_norm)
+            torch.nn.utils.clip_grad_norm(net.parameters(),total_norm*0.9)
             optimizer.step()
             et = time.time()
             epoch_time += (et-st)

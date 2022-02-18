@@ -1530,7 +1530,7 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
         os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'continuous_dataset.csv')
     )
     df_inj   = pd.read_csv(
-        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'synthesized_electricity_0.5.csv')
+        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'train_dataset.csv')
     )
 
 

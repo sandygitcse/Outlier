@@ -26,7 +26,7 @@ from functools import partial
 
 from models import inf_models, inf_index_models
 import utils
-
+torch.backends.cudnn.deterministic = True
 os.environ["TUNE_GLOBAL_CHECKPOINT_S"] = "1000000"
 
 random.seed(0)
@@ -186,8 +186,8 @@ args.base_model_names = [
 #    'nbeatsd-mse-nar'
 #    'rnn-mse-ar',
 #    'rnn-nll-ar',
-   'trans-mse-ar',
-     'trans-huber-ar',
+    'trans-mse-ar',
+   'trans-huber-ar',
     'trans-nll-ar',
 #    'trans-bvnll-ar',
 #    'trans-nll-atr',
