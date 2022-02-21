@@ -23,7 +23,7 @@ import scipy.stats
 import itertools
 
 from functools import partial
-
+torch.backends.cudnn.deterministic = True
 from models import inf_models, inf_index_models
 import utils
 

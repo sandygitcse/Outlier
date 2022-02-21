@@ -1530,13 +1530,13 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
         os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'continuous_dataset.csv')
     )
     df_inj   = pd.read_csv(
-        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'synthesized_electricity_0.5.csv')
+        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'inject_electricity.csv')
     )
 
 
     data = df[['nat_demand']].to_numpy().T
     data_inj = df_inj[['nat_demand']].to_numpy().T
-    # data_inj = data
+    data_inj = data
 
     #n = data.shape[1]
     n = (1903 + 1) * 24 # Select first n=1904*24 entries because of non-stationarity in the data after first n values

@@ -140,11 +140,11 @@
 
 python main.py electricity \
 	--N_input 336 --N_output 168 \
-	--saved_models_dir testing/model_syn \
-	--output_dir testing/Output_syn \
+	--saved_models_dir Results/model_original \
+	--output_dir Results/Output_original \
 	--K_list 1 \
 	--cv_inf 0 \
-	--device cuda:1
+	--device cuda:0
 
 #python main.py foodinflation \
 #	--N_input 90 --N_output 30 \

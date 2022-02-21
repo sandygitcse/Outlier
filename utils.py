@@ -11,7 +11,7 @@ import time
 import shutil
 from tsmoothie.smoother import SpectralSmoother, ExponentialSmoother
 from statsmodels.tsa.seasonal import seasonal_decompose
-import time
+import time,random
 from pdb import set_trace
 from data.synthetic_dataset import create_synthetic_dataset, create_sin_dataset, SyntheticDataset
 from data.real_dataset import parse_ECG5000, parse_Traffic, parse_Taxi, parse_Traffic911, parse_gc_datasets, parse_synthetic, parse_weather, parse_bafu, parse_meteo, parse_azure, parse_ett, parse_sin_noisy, parse_Solar, parse_etthourly, parse_m4hourly, parse_m4daily, parse_taxi30min, parse_aggtest, parse_electricity, parse_foodinflation, parse_telemetry,parse_synthetic
@@ -22,7 +22,7 @@ to_long_tensor = lambda x: torch.FloatTensor(x.copy())
 
 def seed_worker(worker_id):
     # worker_seed = torch.initial_seed() % 2**32
-    worket_seed = 0
+    worker_seed = 0
     np.random.seed(worker_seed)
     random.seed(worker_seed)
 
@@ -633,6 +633,10 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         # print(self.base_enc_len,self.base_dec_len,self.S)
         ex_input = self.data[ts_id]['target_inj'][ pos_id : pos_id+el ]
         ex_target = self.data[ts_id]['target'][ pos_id+el : pos_id+el+dl ]
+        #### anomalies only in test data
+        if self.which_split in ['train']:
+            ex_input = self.data[ts_id]['target'][ pos_id : pos_id+el ]
+        
         # print('after', ex_input.shape, ex_target.shape, ts_id, pos_id)
         # import pdb;pdb.set_trace()
         if self.tsid_map is None:

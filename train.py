@@ -11,6 +11,7 @@ from utils import DataProcessor, get_inputs_median
 import random
 from torch.distributions.normal import Normal
 from pdb import set_trace
+torch.backends.cudnn.deterministic = True
 class QuantileLoss(torch.nn.Module):
     def __init__(self, quantiles, quantile_weights):
         super().__init__()
