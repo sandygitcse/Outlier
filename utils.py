@@ -635,7 +635,7 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         ex_target = self.data[ts_id]['target'][ pos_id+el : pos_id+el+dl ]
         #### anomalies only in test data
         if self.which_split in ['train']:
-            ex_input = self.data[ts_id]['target'][ pos_id : pos_id+el ]
+            ex_input = self.data[ts_id]['target_inj'][ pos_id : pos_id+el ]
         
         # print('after', ex_input.shape, ex_target.shape, ts_id, pos_id)
         # import pdb;pdb.set_trace()

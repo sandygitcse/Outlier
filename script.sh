@@ -140,8 +140,8 @@
 
 python main.py electricity \
 	--N_input 336 --N_output 168 \
-	--saved_models_dir Results/model_original \
-	--output_dir Results/Output_original \
+	--saved_models_dir Results/march/saved_models/model_synthetic_both_amplitude_2_per \
+	--output_dir Results/march/Outputs/Output_synthetic_both_amplitude_2_per \
 	--K_list 1 \
 	--cv_inf 0 \
 	--device cuda:0
