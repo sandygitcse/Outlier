@@ -1,0 +1,1 @@
+seed value for anomaly data 20
