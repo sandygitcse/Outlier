@@ -139,9 +139,9 @@
 #	--device cuda:1
 
 python main.py electricity \
-	--N_input 336 --N_output 168 \
-	--saved_models_dir Results/march/saved_models/model_synthetic_both_amplitude_2_per \
-	--output_dir Results/march/Outputs/Output_synthetic_both_amplitude_2_per \
+	--N_input 168 --N_output 168 \
+	--saved_models_dir Results/series/saved_models/model_syn_168_168_test\
+	--output_dir Results/series/Outputs/Output_syn_168_168_test \
 	--K_list 1 \
 	--cv_inf 0 \
 	--device cuda:0

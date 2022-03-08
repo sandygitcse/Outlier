@@ -631,10 +631,11 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
             el = self.enc_len
             dl = self.dec_len
         # print(self.base_enc_len,self.base_dec_len,self.S)
-        ex_input = self.data[ts_id]['target_inj'][ pos_id : pos_id+el ]
-        ex_target = self.data[ts_id]['target'][ pos_id+el : pos_id+el+dl ]
+        ex_input = self.data[ts_id]['target'][ pos_id : pos_id+el ]
+        # ex_target = self.data[ts_id]['target'][ pos_id+el : pos_id+el+dl ]
+        ex_target = self.data[ts_id]['target'][ pos_id : pos_id+el ]
         #### anomalies only in test data
-        if self.which_split in ['train']:
+        if self.which_split in ['test']:
             ex_input = self.data[ts_id]['target_inj'][ pos_id : pos_id+el ]
         
         # print('after', ex_input.shape, ex_target.shape, ts_id, pos_id)
@@ -647,7 +648,9 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         ex_target = self.target_norm.normalize(ex_target, mapped_id)#.unsqueeze(-1)
 
         ex_input_feats = self.data[ts_id]['feats'][ pos_id : pos_id+el ]
-        ex_target_feats = self.data[ts_id]['feats'][ pos_id+el : pos_id+el+dl ]
+        # ex_target_feats = self.data[ts_id]['feats'][ pos_id+el : pos_id+el+dl ]
+        #### change 
+        ex_target_feats = self.data[ts_id]['feats'][ pos_id : pos_id+el ]
         ex_input_feats_norm = []
         ex_target_feats_norm = []
         for i in range(len(self.feats_info)):

@@ -1,0 +1,1 @@
+revert the changes in utils.py line no.636 and 651, changed the n_input and n_output to 168 in script.sh
