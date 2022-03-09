@@ -139,9 +139,9 @@
 #	--device cuda:1
 
 python main.py electricity \
-	--N_input 168 --N_output 168 \
-	--saved_models_dir Results/series/saved_models/model_syn_168_168_test\
-	--output_dir Results/series/Outputs/Output_syn_168_168_test \
+	--N_input 336 --N_output 168 \
+	--saved_models_dir Results/series/saved_models/model_syn_replicate_test_both_1\
+	--output_dir Results/series/Outputs/Output_syn_replicate_test_both_1 \
 	--K_list 1 \
 	--cv_inf 0 \
 	--device cuda:0

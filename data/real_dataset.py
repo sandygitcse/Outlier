@@ -1533,15 +1533,17 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
         os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'inject_electricity.csv')
     )
 
-
+    test_data = np.load(os.path.join(DATA_DIRS,"Outliers","Outlier","test_data.npy"))
+    test_l = len(test_data)
     data = df[['nat_demand']].to_numpy().T
     data_inj = df_inj[['nat_demand']].to_numpy().T
+    
     # data_inj = data
-
     #n = data.shape[1]
     n = (1903 + 1) * 24 # Select first n=1904*24 entries because of non-stationarity in the data after first n values
     data = data[:, :n]
     data_inj = data_inj[:, :n]
+    data_inj[...,-test_l:] = test_data 
     df = df.iloc[:n]
 
     # set_trace()
