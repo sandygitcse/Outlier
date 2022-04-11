@@ -211,73 +211,6 @@ args.base_model_names = [
 args.aggregate_methods = ['sum']
 args.K_list = [1]
 
-args.inference_model_names = []
-if 'seq2seqdilate' in args.base_model_names:
-    args.inference_model_names.append('DILATE')
-if 'seq2seqmse' in args.base_model_names:
-    args.inference_model_names.append('MSE')
-if 'seq2seqnll' in args.base_model_names:
-    args.inference_model_names.append('NLL')
-if 'convmse' in args.base_model_names:
-    args.inference_model_names.append('CNNRNN-MSE')
-if 'convnll' in args.base_model_names:
-    args.inference_model_names.append('CNNRNN-NLL')
-if 'convmsenonar' in args.base_model_names:
-    args.inference_model_names.append('CNNRNN-NONAR-MSE')
-if 'rnn-aggnll-nar' in args.base_model_names:
-    args.inference_model_names.append('RNN-AGGNLL-NAR')
-if 'rnn-q-nar' in args.base_model_names:
-    args.inference_model_names.append('RNN-Q-NAR')
-if 'rnn-mse-ar' in args.base_model_names:
-    args.inference_model_names.append('RNN-MSE-AR')
-if 'rnn-q-ar' in args.base_model_names:
-    args.inference_model_names.append('RNN-Q-AR')
-if 'trans-mse-nar' in args.base_model_names:
-    args.inference_model_names.append('TRANS-MSE-NAR')
-if 'trans-q-nar' in args.base_model_names:
-    args.inference_model_names.append('TRANS-Q-NAR')
-if 'nbeats-mse-nar' in args.base_model_names:
-    args.inference_model_names.append('NBEATS-MSE-NAR')
-if 'nbeatsd-mse-nar' in args.base_model_names:
-    args.inference_model_names.append('NBEATSD-MSE-NAR')
-if 'rnn-mse-nar' in args.base_model_names:
-    args.inference_model_names.append('RNN-MSE-NAR')
-if 'rnn-nll-nar' in args.base_model_names:
-    args.inference_model_names.append('RNN-NLL-NAR')
-if 'rnn-nll-ar' in args.base_model_names:
-    args.inference_model_names.append('RNN-NLL-AR')
-if 'trans-mse-ar' in args.base_model_names:
-    args.inference_model_names.append('TRANS-MSE-AR')
-if 'trans-huber-ar' in args.base_model_names:
-    args.inference_model_names.append('TRANS-HUBER-AR')
-if 'trans-nll-ar' in args.base_model_names:
-    args.inference_model_names.append('TRANS-NLL-AR')
-if 'trans-bvnll-ar' in args.base_model_names:
-    args.inference_model_names.append('TRANS-BVNLL-AR')
-if 'trans-nll-atr' in args.base_model_names:
-    args.inference_model_names.append('TRANS-NLL-ATR')
-if 'trans-fnll-ar' in args.base_model_names:
-    args.inference_model_names.append('TRANS-FNLL-AR')
-if 'rnn-fnll-nar' in args.base_model_names:
-    args.inference_model_names.append('RNN-FNLL-NAR')
-if 'transm-nll-nar' in args.base_model_names:
-    args.inference_model_names.append('TRANSM-NLL-NAR')
-if 'transm-fnll-nar' in args.base_model_names:
-    args.inference_model_names.append('TRANSM-FNLL-NAR')
-if 'transda-nll-nar' in args.base_model_names:
-    args.inference_model_names.append('TRANSDA-NLL-NAR')
-if 'transda-fnll-nar' in args.base_model_names:
-    args.inference_model_names.append('TRANSDA-FNLL-NAR')
-if 'oracle' in args.base_model_names:
-    args.inference_model_names.append('oracle')
-if 'oracleforecast' in args.base_model_names:
-    args.inference_model_names.append('SimRetrieval')
-if 'transsig-nll-nar' in args.base_model_names:
-    args.inference_model_names.append('TRANSSIG-NLL-NAR')
-
-
-
-
 if args.dataset_name in ['Traffic']:
     args.alpha = 0.8
 
@@ -542,9 +475,6 @@ base_models_preds = {}
 for name in args.base_model_names:
     base_models[name] = {}
     base_models_preds[name] = {}
-inference_models = {}
-for name in args.inference_model_names:
-    inference_models[name] = {}
 
 
 # DUMP_PATH = '/mnt/infonas/data/pratham/Forecasting/DILATE'
@@ -666,108 +596,7 @@ def run_inference_model(
     metric2val = dict()
     infmodel2preds = dict()
 
-    if inf_model_name in ['DILATE']:
-        base_models_dict = base_models['seq2seqdilate']['sum']
-        inf_net = inf_models.DILATE(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['RNN-MSE-NAR']:
-        base_models_dict = base_models['rnn-mse-nar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['RNN-NLL-NAR']:
-        base_models_dict = base_models['rnn-nll-nar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['RNN-NLL-AR']:
-        base_models_dict = base_models['rnn-nll-ar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['TRANS-MSE-AR']:
-        inf_net = base_models['trans-mse-ar']['sum'][1]
-
-    elif inf_model_name in ['TRANS-HUBER-AR']:
-        base_models_dict = base_models['trans-huber-ar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['TRANS-NLL-AR']:
-        base_models_dict = base_models['trans-nll-ar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['TRANS-BVNLL-AR']:
-        base_models_dict = base_models['trans-bvnll-ar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['TRANS-NLL-ATR']:
-        base_models_dict = base_models['trans-nll-atr']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['TRANS-FNLL-AR']:
-        base_models_dict = base_models['trans-fnll-ar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['RNN-FNLL-NAR']:
-        base_models_dict = base_models['rnn-fnll-nar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['oracle']:
-        base_models_dict = base_models['oracle']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device, is_oracle=True)
-
-    elif inf_model_name in ['SimRetrieval']:
-        base_models_dict = base_models['oracleforecast']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device, is_oracle=True)
-
-    elif inf_model_name in ['TRANSSIG-NLL-NAR']:
-        base_models_dict = base_models['transsig-nll-nar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['TRANSM-NLL-NAR']:
-        base_models_dict = base_models['transm-nll-nar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['TRANSM-FNLL-NAR']:
-        base_models_dict = base_models['transm-fnll-nar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['TRANSDA-NLL-NAR']:
-        base_models_dict = base_models['transda-nll-nar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['TRANSDA-FNLL-NAR']:
-        base_models_dict = base_models['transda-fnll-nar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['RNN-AGGNLL-NAR']:
-        base_models_dict = base_models['rnn-aggnll-nar']['sum']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['RNN-Q-NAR']:
-        base_models_dict = base_models['rnn-q-nar']['sum']
-        raise NotImplementedError
-
-    elif inf_model_name in ['RNN-MSE-AR']:
-        base_models_dict = base_models['rnn-mse-ar']['sum']
-        raise NotImplementedError
-
-    elif inf_model_name in ['RNN-Q-AR']:
-        base_models_dict = base_models['rnn-q-ar']['sum']
-        raise NotImplementedError
-
-    elif inf_model_name in ['TRANS-MSE-NAR']:
-        base_models_dict = base_models['trans-mse-nar']['sum']
-        raise NotImplementedError
-
-    elif inf_model_name in ['TRANS-Q-NAR']:
-        base_models_dict = base_models['trans-q-nar']['sum']
-        raise NotImplementedError
-
-    elif inf_model_name in ['NBEATS-MSE-NAR']:
-        base_models_dict = base_models['nbeats-mse-nar']['sum']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['NBEATSD-MSE-NAR']:
-        base_models_dict = base_models['nbeatsd-mse-nar']['sum']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
+    inf_net = base_models[inf_model_name]['sum'][1]
 
     if not args.leak_agg_targets:
         inf_test_targets_dict = None
@@ -786,7 +615,7 @@ def run_inference_model(
         inputs, target, pred_mu, pred_std, pred_d, pred_v
     )
 
-    inference_models[inf_model_name] = inf_net
+    # inference_models[inf_model_name] = inf_net
 
     print('Metrics for Inference model {}: MAE:{:f}, CRPS:{:f}, MSE:{:f}, SMAPE:{:f}, Time:{:f}'.format(
         inf_model_name, metric_mae, metric_crps, metric_mse, metric_smape, total_time)
@@ -814,7 +643,7 @@ def run_inference_model(
 
 model2metrics = dict()
 model2aggmetrics = dict()
-for inf_model_name in args.inference_model_names:
+for inf_model_name in args.base_model_names:
 
         metric2val, agg2metrics = run_inference_model(
             args, inf_model_name, base_models, 'test', opt_normspace
