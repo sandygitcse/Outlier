@@ -474,22 +474,17 @@ def aggregate_data(y, agg_type, K, is_var, a=None, v=None):
 class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
     """docstring for TimeSeriesDatasetOfflineAggregate"""
     def __init__(
-        self, data, enc_len, dec_len, aggregation_type, K,
-        feats_info, which_split, tsid_map=None, input_norm=None, target_norm=None,
+        self, data, enc_len, dec_len, feats_info, which_split,
+        tsid_map=None, input_norm=None, target_norm=None,
         norm_type=None, feats_norms=None, train_obj=None
     ):
         super(TimeSeriesDatasetOfflineAggregate, self).__init__()
 
-        assert enc_len%K == 0
-        assert dec_len%K == 0
-
-        print('Creating dataset:', aggregation_type, K)
+        print('Creating dataset')
         self._base_enc_len = enc_len
         self._base_dec_len = dec_len
         #self.num_values = len(data[0]['target'][0])
         self.which_split = which_split
-        self.aggregation_type = aggregation_type
-        self.K = K
         self.input_norm = input_norm
         self.target_norm = target_norm
         self.norm_type = norm_type
@@ -498,8 +493,6 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         self.feats_norms = feats_norms
         #self.train_obj = train_obj
         #self.generate_a()
-        self.a = get_a(self.aggregation_type, self.K)
-        self.S = 1
 
         # Perform aggregation if level != 1
         st = time.time()
@@ -511,16 +504,10 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
             ex_m = data[i]['target_mask']
             ex_f = data[i]['feats']
             ex_len = len(ex)
-            ex = ex[ ex_len%self.K: ]
-            ex_i = ex_i[ ex_len%self.K: ]
-            ex_m = ex_m[ ex_len%self.K: ]
-            ex_f = ex_f[ ex_len%self.K: ]
-
-            #bp = np.arange(1,len(ex), 1)
-            if which_split in ['train']:
-                bp = [(i, self.K) for i in np.arange(0, len(ex)-self.K+1, self.S)]
-            elif which_split in ['dev', 'test']:
-                bp = [(i, self.K) for i in np.arange(0, len(ex), self.K)]
+            # ex = ex[ ex_len%self.K: ]
+            # ex_i = ex_i[ ex_len%self.K: ]
+            # ex_m = ex_m[ ex_len%self.K: ]
+            # ex_f = ex_f[ ex_len%self.K: ]
 
             ex_agg = ex
             ex_i_agg = ex_i
@@ -536,7 +523,7 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
                 }
             )
         et = time.time()
-        print(which_split, self.aggregation_type, self.K, 'total time:', et-st)
+        print(which_split, 'total time:', et-st)
 
         #if self.K>1 and which_split in ['dev']:
         #    import ipdb ; ipdb.set_trace()
@@ -629,8 +616,8 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         pos_id = self.indices[idx][1]
 
         if self.which_split in ['train']:
-            el = self.base_enc_len // self.S
-            dl = self.base_dec_len // self.S
+            el = self.base_enc_len
+            dl = self.base_dec_len
         elif self.which_split in ['dev', 'test']:
             el = self.enc_len
             dl = self.dec_len
@@ -756,23 +743,12 @@ class DataProcessor(object):
         self.feats_info = feats_info
         
 
-    def get_processed_data(self, args, agg_method, K):
+    def get_processed_data(self, args):
 
-        if agg_method in ['wavelet']:
-            wavelet_levels = args.wavelet_levels
-            K_list = range(1, args.wavelet_levels+1+1+1)
-            # +1 : wavedec returns args.wavelet_levels+1 coefficients
-            # +1 : Extra slot for base values
-            # +1 : Because starting index is 1.
-        else:
-            wavelet_levels = None
-            K_list = args.K_list
- 
- 
         # set_trace()
         lazy_dataset_train = TimeSeriesDatasetOfflineAggregate(
             self.data_train, args.N_input, args.N_output,
-            agg_method, K, which_split='train',
+            which_split='train',
             norm_type=args.normalize,
             feats_info=self.feats_info,
         )
@@ -791,7 +767,6 @@ class DataProcessor(object):
         #ipdb.set_trace()
         lazy_dataset_dev = TimeSeriesDatasetOfflineAggregate(
             self.data_dev, args.N_input, args.N_output,
-            agg_method, K,
             input_norm=dev_norm, which_split='dev',
             #target_norm=Normalizer(self.data_dev, 'same'),
             target_norm=dev_norm,
@@ -803,7 +778,7 @@ class DataProcessor(object):
         print('Number of chunks in dev data:', len(lazy_dataset_dev))
         lazy_dataset_test = TimeSeriesDatasetOfflineAggregate(
             self.data_test, args.N_input, args.N_output,
-            agg_method, K, which_split='test',
+            which_split='test',
             input_norm=test_norm,
             #target_norm=test_norm,
             target_norm=Normalizer(self.data_test, 'same'),

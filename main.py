@@ -208,8 +208,6 @@ args.base_model_names = [
 #    'oracleforecast'
 #    'transsig-nll-nar',
 ]
-args.aggregate_methods = ['sum']
-args.K_list = [1]
 
 if args.dataset_name in ['Traffic']:
     args.alpha = 0.8
@@ -492,11 +490,7 @@ data_processor = utils.DataProcessor(args)
 
 # ----- Start: Load all datasets ----- #
 
-dataset = {}
-agg_method = args.aggregate_methods[0]
-dataset[agg_method] = {}
-level = args.K_list[0]
-dataset[agg_method][level] = data_processor.get_processed_data(args, agg_method, level)
+dataset = data_processor.get_processed_data(args)
 
 # ----- End : Load all datasets ----- #
 
@@ -506,23 +500,16 @@ for base_model_name in args.base_model_names:
     base_models[base_model_name] = {}
     base_models_preds[base_model_name] = {}
 
-    level = args.K_list[0]
-    agg_method = args.aggregate_methods[0]
-
-    base_models[base_model_name][agg_method] = {}
-    base_models_preds[base_model_name][agg_method] = {}
-
-    level2data = dataset[agg_method][level]
-    trainloader = level2data['trainloader']
-    devloader = level2data['devloader']
-    testloader = level2data['testloader']
-    feats_info = level2data['feats_info']
-    N_input = level2data['N_input']
-    N_output = level2data['N_output']
-    input_size = level2data['input_size']
-    output_size = level2data['output_size']
-    dev_norm = level2data['dev_norm']
-    test_norm = level2data['test_norm']
+    trainloader = dataset['trainloader']
+    devloader = dataset['devloader']
+    testloader = dataset['testloader']
+    feats_info = dataset['feats_info']
+    N_input = dataset['N_input']
+    N_output = dataset['N_output']
+    input_size = dataset['input_size']
+    output_size = dataset['output_size']
+    dev_norm = dataset['dev_norm']
+    test_norm = dataset['test_norm']
     
     if base_model_name in [
         'seq2seqmse', 'seq2seqdilate', 'convmse', 'convmsenonar',
@@ -545,34 +532,30 @@ for base_model_name in args.base_model_names:
 
     saved_models_dir = os.path.join(
         args.saved_models_dir,
-        args.dataset_name+'_'+base_model_name+'_'+agg_method+'_'+str(level)
+        args.dataset_name+'_'+base_model_name
     )
     os.makedirs(saved_models_dir, exist_ok=True)
     writer = SummaryWriter(saved_models_dir)
     saved_models_path = os.path.join(saved_models_dir, 'state_dict_model.pt')
-    print('\n {} {} {}'.format(base_model_name, agg_method, str(level)))
+    print('\n{} '.format(base_model_name))
 
 
     # Create the network
     # import pdb;pdb.set_trace()
     net_gru = get_base_model(
-        args, base_model_name, level,
-        N_input, N_output, input_size, output_size,
+        args, base_model_name, N_input, N_output, input_size, output_size,
         estimate_type, feats_info
     )
 
     # train the network
-    if agg_method in ['sumwithtrend', 'slope', 'wavelet', 'haar'] and level == 1:
-        base_models[base_model_name][agg_method][level] = base_models[base_model_name]['sum'][1]
-    else:
-        # import pdb;pdb.set_trace()
-        if base_model_name not in ['oracle', 'oracleforecast']:
-            train_model(
-                args, base_model_name, net_gru,
-                level2data, saved_models_path, writer, verbose=1
-            )
+    # import pdb;pdb.set_trace()
+    if base_model_name not in ['oracle', 'oracleforecast']:
+        train_model(
+            args, base_model_name, net_gru,
+            dataset, saved_models_path, writer, verbose=1
+        )
 
-        base_models[base_model_name][agg_method][level] = net_gru
+    base_models[base_model_name] = net_gru
 
     writer.flush()
 
@@ -589,22 +572,20 @@ print('\n Starting Inference Models')
 #ipdb.set_trace()
 
 
-def run_inference_model(
-    args, inf_model_name, base_models, which_split, opt_normspace, agg_method=None, K=None
-):
+def run_inference_model(args, inf_model_name, base_models, which_split):
 
     metric2val = dict()
     infmodel2preds = dict()
 
-    inf_net = base_models[inf_model_name]['sum'][1]
+    inf_net = base_models[inf_model_name]
 
     if not args.leak_agg_targets:
         inf_test_targets_dict = None
 
     inf_net.eval()
     outputs_dict, metrics_dict = eval_base_model(
-        args, inf_model_name, inf_net, dataset['sum'][1]['testloader'],
-        dataset['sum'][1]['test_norm'], args.gamma, 'test'
+        args, inf_model_name, inf_net, dataset['testloader'],
+        dataset['test_norm'], args.gamma, 'test'
     )
     inputs, target = outputs_dict['inputs'], outputs_dict['target']
     pred_mu, pred_std, pred_d, pred_v = outputs_dict['pred_mu'], outputs_dict['pred_std'], outputs_dict['pred_d'], outputs_dict['pred_v']
@@ -646,7 +627,7 @@ model2aggmetrics = dict()
 for inf_model_name in args.base_model_names:
 
         metric2val, agg2metrics = run_inference_model(
-            args, inf_model_name, base_models, 'test', opt_normspace
+            args, inf_model_name, base_models, 'test'
         )
         model2metrics[inf_model_name] = metric2val
         model2aggmetrics[inf_model_name] = agg2metrics
