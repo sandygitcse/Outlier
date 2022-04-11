@@ -234,12 +234,12 @@ class ARTransformerModel(nn.Module):
             #import ipdb ; ipdb.set_trace()
 
         self.encoder_layer = nn.TransformerEncoderLayer(
-            d_model=enc_input_size, nhead=4, dropout=0, dim_feedforward=512
+            d_model=enc_input_size, nhead=1, dropout=0, dim_feedforward=512
         )
         self.encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=2)
 
         self.decoder_layer = nn.TransformerDecoderLayer(
-            d_model=nkernel, nhead=4, dropout=0, dim_feedforward=512
+            d_model=nkernel, nhead=1, dropout=0, dim_feedforward=512
         )
         self.decoder_mean = nn.TransformerDecoder(self.decoder_layer, num_layers=2)
         if self.estimate_type in ['variance', 'covariance', 'bivariate']:
@@ -332,7 +332,7 @@ class ARTransformerModel(nn.Module):
     def forward(
         self, feats_in, X_in, feats_out, X_out=None, teacher_force=None,mask=None
     ):
-        set_trace()
+        
         #X_in = X_in[..., -X_in.shape[1]//5:, :]
         #feats_in = feats_in[..., -feats_in.shape[1]//5:, :]
 
@@ -405,7 +405,7 @@ class ARTransformerModel(nn.Module):
             enc_input = enc_input + self.t2v_dropout(t2v)
         else:
             enc_input = self.positional(enc_input)
-        
+   
         encoder_output = self.encoder(enc_input,mask)
 
         if self.use_feats:

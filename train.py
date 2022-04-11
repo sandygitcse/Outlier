@@ -94,6 +94,7 @@ def train_model(
             st = time.time()
             inputs, target,mask, feats_in, feats_tgt, _, _ = data
             target = target.to(args.device)
+            mask = mask.to(args.device)
             batch_size, N_output = target.shape[0:2]
 
             #import ipdb ; ipdb.set_trace()
@@ -108,7 +109,7 @@ def train_model(
             else:
                 teacher_force = False
 
-            import pdb;pdb.set_trace()
+            # import pdb;pdb.set_trace()
             out = net(
                 feats_in.to(args.device), inputs.to(args.device),
                 feats_tgt.to(args.device), target.to(args.device),

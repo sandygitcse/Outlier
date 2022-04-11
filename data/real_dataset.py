@@ -96,7 +96,7 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
         os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'continuous_dataset.csv')
     )
     df_inject   = pd.read_csv(
-        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'synthesized_electricity_0.5.csv')
+        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', '2_percent_electricity.csv')
     )
 
     test_data = np.load(os.path.join(DATA_DIRS,"Outliers","Outlier","test_data.npy"))
