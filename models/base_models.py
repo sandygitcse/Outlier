@@ -2179,7 +2179,7 @@ class Net_GRU(nn.Module):
         return means, stds
 
 def get_base_model(
-    args, base_model_name, level, N_input, N_output,
+    args, base_model_name, N_input, N_output,
     input_size, output_size, estimate_type, feats_info
 ):
 
