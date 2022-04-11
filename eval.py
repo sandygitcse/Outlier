@@ -28,7 +28,7 @@ def eval_base_model(args, model_name, net, loader, norm, gamma, verbose=1, unnor
     for i, data in enumerate(loader, 0):
         loss_mse, loss_dtw, loss_tdi, loss_mae, losses_nll, losses_ql = torch.tensor(0), torch.tensor(0), torch.tensor(0), torch.tensor(0), torch.tensor(0), torch.tensor(0)
         # get the inputs
-        batch_inputs, batch_target, feats_in, feats_tgt, ids, _, = data
+        batch_inputs, batch_target,mask, feats_in, feats_tgt, ids, _, = data
         
         # if args.initialization:
         #     batch_target = utils.get_inputs_median(batch_inputs, batch_target)
@@ -594,7 +594,7 @@ def eval_inf_model(args, net, dataset, which_split, gamma, verbose=1):
         pred_std.append(batch_pred_std.cpu())
         target.append(batch_target.cpu())
         inputs.append(dataset_batch['sum'][1][0])
-        mapped_ids.append(dataset_batch['sum'][1][4])
+        mapped_ids.append(dataset_batch['sum'][1][5])
 
     end_time = time.time()
 

@@ -140,8 +140,8 @@
 
 python main.py electricity \
 	--N_input 336 --N_output 168 \
-	--saved_models_dir Results/series/saved_models/model_syn_replicate_test_both_1\
-	--output_dir Results/series/Outputs/Output_syn_replicate_test_both_1 \
+	--saved_models_dir saved_models/masked_model2\
+	--output_dir Results/maked_result2 \
 	--K_list 1 \
 	--cv_inf 0 \
 	--device cuda:0

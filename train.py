@@ -79,8 +79,9 @@ def train_model(
             print('No saved model found')
         best_epoch = -1
         best_metric = np.inf
+    
     net.train()
-
+    # set_trace()
     if net.estimate_type in ['point']:
         mse_loss = torch.nn.MSELoss()
 
@@ -91,7 +92,7 @@ def train_model(
         epoch_loss, epoch_time = 0., 0.
         for i, data in enumerate(trainloader, 0):
             st = time.time()
-            inputs, target, feats_in, feats_tgt, _, _ = data
+            inputs, target,mask, feats_in, feats_tgt, _, _ = data
             target = target.to(args.device)
             batch_size, N_output = target.shape[0:2]
 
@@ -106,10 +107,12 @@ def train_model(
                 teacher_force = True
             else:
                 teacher_force = False
+
+            import pdb;pdb.set_trace()
             out = net(
                 feats_in.to(args.device), inputs.to(args.device),
                 feats_tgt.to(args.device), target.to(args.device),
-                teacher_force=teacher_force
+                teacher_force=teacher_force,mask=None
             )
             if net.is_signature:
                 if net.estimate_type in ['point']:

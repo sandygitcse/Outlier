@@ -66,15 +66,16 @@ class RNNNLLNAR(torch.nn.Module): # this is currently being used in the transfor
         self.covariance = covariance
 
     def forward(self, dataset, norms, which_split):
-        feats_in = dataset['sum'][1][2].to(self.device)
+        mask = dataset['sum'][1][2].to(self.device)
+        feats_in = dataset['sum'][1][3].to(self.device)
         inputs = dataset['sum'][1][0].to(self.device)
-        feats_tgt = dataset['sum'][1][3].to(self.device)
+        feats_tgt = dataset['sum'][1][4].to(self.device)
         target = dataset['sum'][1][1].to(self.device)
         #if self.is_oracle:
         #    target = dataset['sum'][1][1].to(self.device)
         #else:
         #    target = None
-        ids = dataset['sum'][1][4].cpu()
+        ids = dataset['sum'][1][5].cpu()
 
         mdl = self.base_models_dict['sum'][1]
         with torch.no_grad():

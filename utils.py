@@ -14,7 +14,7 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 import time,random
 from pdb import set_trace
 from data.synthetic_dataset import create_synthetic_dataset, create_sin_dataset, SyntheticDataset
-from data.real_dataset import parse_ECG5000, parse_Traffic, parse_Taxi, parse_Traffic911, parse_gc_datasets, parse_synthetic, parse_weather, parse_bafu, parse_meteo, parse_azure, parse_ett, parse_sin_noisy, parse_Solar, parse_etthourly, parse_m4hourly, parse_m4daily, parse_taxi30min, parse_aggtest, parse_electricity, parse_foodinflation, parse_telemetry,parse_synthetic
+from data.real_dataset import parse_electricity
 torch.backends.cudnn.deterministic = True
 
 to_float_tensor = lambda x: torch.FloatTensor(x.copy())
@@ -508,10 +508,12 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
             #print(i, len(data))
             ex = data[i]['target']
             ex_i = data[i]['target_inj']
+            ex_m = data[i]['target_mask']
             ex_f = data[i]['feats']
             ex_len = len(ex)
             ex = ex[ ex_len%self.K: ]
             ex_i = ex_i[ ex_len%self.K: ]
+            ex_m = ex_m[ ex_len%self.K: ]
             ex_f = ex_f[ ex_len%self.K: ]
 
             #bp = np.arange(1,len(ex), 1)
@@ -522,12 +524,14 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
 
             ex_agg = ex
             ex_i_agg = ex_i
+            ex_m_agg = ex_m
             ex_f_agg = ex_f
 
             data_agg.append(
                 {
                     'target':ex_agg,
                     'target_inj':ex_i_agg,
+                    'target_mask':ex_m_agg,
                     'feats':ex_f_agg,
                 }
             )
@@ -632,11 +636,12 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
             dl = self.dec_len
         # print(self.base_enc_len,self.base_dec_len,self.S)
         ex_input = self.data[ts_id]['target_inj'][ pos_id : pos_id+el ]
+        ex_mask = self.data[ts_id]['target_mask'][ pos_id : pos_id+el ]
         ex_target = self.data[ts_id]['target'][ pos_id+el : pos_id+el+dl ]
         # ex_target = self.data[ts_id]['target'][ pos_id : pos_id+el ]
         #### anomalies only in test data
-        if self.which_split in ['test']:
-            ex_input = self.data[ts_id]['target_inj'][ pos_id : pos_id+el ]
+        # if self.which_split in ['train','dev','test']:
+        #     ex_input = self.data[ts_id]['target_inj'][ pos_id : pos_id+el ]
         
         # print('after', ex_input.shape, ex_target.shape, ts_id, pos_id)
         # import pdb;pdb.set_trace()
@@ -678,9 +683,9 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         #)
 
         #print(ex_input.shape, ex_target.shape, ex_input_feats.shape, ex_target_feats.shape)
-
+        # set_trace()
         return (
-            ex_input, ex_target,
+            ex_input, ex_target,ex_mask,
             ex_input_feats, ex_target_feats,
             mapped_id,
             torch.FloatTensor([ts_id, pos_id])
@@ -733,159 +738,13 @@ class DataProcessor(object):
         super(DataProcessor, self).__init__()
         self.args = args
 
-        if args.dataset_name in ['synth']:
-            # parameters
-            N = 500
-            sigma = 0.01
-    
-            # Load synthetic dataset
-            (
-                X_train_input, X_train_target,
-                X_dev_input, X_dev_target,
-                X_test_input, X_test_target,
-                train_bkp, dev_bkp, test_bkp,
-            ) = create_synthetic_dataset(N, args.N_input, args.N_output, sigma)
-    
-        elif args.dataset_name in ['sin']:
-            N = 100
-            sigma = 0.01
-    
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map
-            ) = create_sin_dataset(N, args.N_input, args.N_output, sigma)
-    
-        elif args.dataset_name in ['ECG5000']:
-            (
-                X_train_input, X_train_target,
-                X_dev_input, X_dev_target,
-                X_test_input, X_test_target,
-                train_bkp, dev_bkp, test_bkp,
-                data_train, data_dev, data_test
-            ) = parse_ECG5000(args.N_input, args.N_output)
-    
-        elif args.dataset_name in ['Traffic']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map
-            ) = parse_Traffic(args.N_input, args.N_output)
-    
-        elif args.dataset_name in ['Taxi']:
-            (
-                X_train_input, X_train_target,
-                X_dev_input, X_dev_target,
-                X_test_input, X_test_target,
-                train_bkp, dev_bkp, test_bkp,
-                data_train, data_dev, data_test
-            ) = parse_Taxi(args.N_input, args.N_output)
-    
-        elif args.dataset_name in ['Traffic911']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map,
-                feats_info, coeffs_info
-            ) = parse_Traffic911(args.N_input, args.N_output)
-        elif args.dataset_name in ['Exchange', 'Wiki']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map
-            ) = parse_gc_datasets(args.dataset_name, args.N_input, args.N_output)
-
-        elif args.dataset_name in ['weather']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map
-            ) = parse_weather(args.dataset_name, args.N_input, args.N_output)
-        elif args.dataset_name in ['bafu']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map
-            ) = parse_bafu(args.dataset_name, args.N_input, args.N_output)
-        elif args.dataset_name in ['meteo']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map
-            ) = parse_meteo(args.dataset_name, args.N_input, args.N_output)
-        elif args.dataset_name in ['azure']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map,
-                feats_info
-            ) = parse_azure(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
-        elif args.dataset_name in ['ett']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map,
-                feats_info
-            ) = parse_ett(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
-        elif args.dataset_name in ['sin_noisy']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map,
-                feats_info, coeffs_info
-            ) = parse_sin_noisy(args.dataset_name, args.N_input, args.N_output)
-        elif args.dataset_name in ['Solar']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map,
-                feats_info
-            ) = parse_Solar(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
-        elif args.dataset_name in ['etthourly']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map,
-                feats_info
-            ) = parse_etthourly(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
-        elif args.dataset_name in ['m4hourly']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map,
-                feats_info, coeffs_info
-            ) = parse_m4hourly(args.dataset_name, args.N_input, args.N_output)
-        elif args.dataset_name in ['m4daily']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map,
-                feats_info, coeffs_info
-            ) = parse_m4daily(args.dataset_name, args.N_input, args.N_output)
-        elif args.dataset_name in ['taxi30min']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map,
-                feats_info
-            ) = parse_taxi30min(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
-        elif args.dataset_name in ['aggtest']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map,
-                feats_info
-            ) = parse_aggtest(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
-        elif args.dataset_name in ['electricity']:
+        if args.dataset_name in ['electricity']:
             (
                 data_train, data_dev, data_test,
                 dev_tsid_map, test_tsid_map,
                 feats_info
             ) = parse_electricity(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
-        elif args.dataset_name in ['foodinflation']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map,
-                feats_info
-            ) = parse_foodinflation(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
-        elif args.dataset_name in ['telemetry']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map,
-                feats_info
-            ) = parse_telemetry(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
-        elif args.dataset_name in ['outlier']:
-            (
-                data_train, data_dev, data_test,
-                dev_tsid_map, test_tsid_map,
-                feats_info
-            ) = parse_synthetic(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
-
-
+        
         if args.use_feats:
             assert 'feats' in data_train[0].keys()
 
@@ -895,7 +754,7 @@ class DataProcessor(object):
         self.dev_tsid_map = dev_tsid_map
         self.test_tsid_map = test_tsid_map
         self.feats_info = feats_info
-
+        
 
     def get_processed_data(self, args, agg_method, K):
 

@@ -1,3 +1,4 @@
+from bdb import set_trace
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -329,9 +330,9 @@ class ARTransformerModel(nn.Module):
         return encoder_output
 
     def forward(
-        self, feats_in, X_in, feats_out, X_out=None, teacher_force=None
+        self, feats_in, X_in, feats_out, X_out=None, teacher_force=None,mask=None
     ):
-
+        set_trace()
         #X_in = X_in[..., -X_in.shape[1]//5:, :]
         #feats_in = feats_in[..., -feats_in.shape[1]//5:, :]
 
@@ -404,7 +405,8 @@ class ARTransformerModel(nn.Module):
             enc_input = enc_input + self.t2v_dropout(t2v)
         else:
             enc_input = self.positional(enc_input)
-        encoder_output = self.encoder(enc_input)
+        
+        encoder_output = self.encoder(enc_input,mask)
 
         if self.use_feats:
             feats_out_merged = []
