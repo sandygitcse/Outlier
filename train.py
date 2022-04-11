@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from loss.dilate_loss import dilate_loss
-from eval import eval_base_model, eval_index_model
+from eval import eval_base_model
 import time
 from models.base_models import get_base_model
 from utils import DataProcessor, get_inputs_median
@@ -286,27 +286,26 @@ def train_model(
             #if i>=100:
             #    break
             if (curr_step % args.print_every == 0):
-                (
-                    _, _, pred_mu, pred_std,
-                    metric_dilate, metric_mse, metric_dtw, metric_tdi,
-                    metric_crps, metric_mae, metric_crps_part, metric_nll, metric_ql
-                )= eval_base_model(
-                    args, model_name, net, devloader, norm, args.gamma, verbose=1
+                outputs_dict, metrics_dict = eval_base_model(
+                    args, model_name, net, devloader, norm, args.gamma, 'val', verbose=1
                 )
 
                 if model_name in ['seq2seqdilate']:
-                    metric = metric_dilate
+                    metric = metrics_dict['metric_dilate']
                 elif 'mse' in model_name:
                     #metric = metric_crps
-                    metric = metric_mse
+                    metric = metrics_dict['metric_mse']
                 elif 'huber' in model_name:
                     #metric = metric_crps
-                    metric = metric_mse
+                    metric = metrics_dict['metric_mse']
                 elif 'nll' in model_name:
-                    metric = metric_nll
+                    metric = metrics_dict['metric_nll']
                     #metric = metric_crps
                 elif '-q-' in model_name:
-                    metric = metric_ql
+                    metric = metrics_dict['metric_ql']
+                metric_dilate, metric_mse, metric_dtw, metric_tdi, metric_crps, metric_mae, metric_smape, total_time = metrics_dict['metric_dilate'], metrics_dict['metric_mse'], metrics_dict['metric_dtw'], metrics_dict['metric_tdi'], metrics_dict['metric_crps'], metrics_dict['metric_mae'], metrics_dict['metric_smape'], metrics_dict['total_time']
+                metric_nll, metric_ql = metrics_dict['metric_nll'], metrics_dict['metric_ql']
+
 
                 #if True:
                 if metric < best_metric:
@@ -369,17 +368,18 @@ def train_model(
     net.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     net.eval()
-    (
-        _, _, pred_mu, pred_std,
-        metric_dilate, metric_mse, metric_dtw, metric_tdi,
-        metric_crps, metric_mae, metric_crps_part, metric_nll, metric_ql
-    ) = eval_base_model(
-        args, model_name, net, devloader, norm, args.gamma, verbose=1
+    # (
+    #     _, _, pred_mu, pred_std,
+    #     metric_dilate, metric_mse, metric_dtw, metric_tdi,
+    #     metric_crps, metric_mae, metric_crps_part, metric_nll, metric_ql
+    # ) 
+    outputs_dict, metrics_dict = eval_base_model(
+        args, model_name, net, devloader, norm, args.gamma, 'val', verbose=1
     )
 
     if model_name in ['seq2seqdilate']:
-        metric = metric_dilate
+        metric = metrics_dict['metric_dilate']
     else:
-        metric = metric_crps
+        metric = metrics_dict['metric_crps']
 
     return metric

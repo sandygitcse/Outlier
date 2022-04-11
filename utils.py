@@ -685,7 +685,7 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         #print(ex_input.shape, ex_target.shape, ex_input_feats.shape, ex_target_feats.shape)
         # set_trace()
         return (
-            ex_input, ex_target,ex_mask,
+            ex_input, ex_target, ex_mask,
             ex_input_feats, ex_target_feats,
             mapped_id,
             torch.FloatTensor([ts_id, pos_id])

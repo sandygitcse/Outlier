@@ -8,7 +8,7 @@ from models.base_models import EncoderRNN, DecoderRNN, Net_GRU, NetFullyConnecte
 from models.index_models import get_index_model
 from loss.dilate_loss import dilate_loss
 from train import train_model, get_optimizer
-from eval import eval_base_model, eval_inf_model, eval_inf_index_model, eval_aggregates
+from eval import eval_base_model, eval_inf_model, eval_aggregates
 from torch.utils.data import DataLoader
 import random
 from tslearn.metrics import dtw, dtw_path
@@ -21,10 +21,11 @@ import shutil
 import properscoring as ps
 import scipy.stats
 import itertools
+import GPUtil
 
 from functools import partial
 torch.backends.cudnn.deterministic = True
-from models import inf_models, inf_index_models
+# from models import inf_models, inf_index_models
 import utils
 
 os.environ["TUNE_GLOBAL_CHECKPOINT_S"] = "1000000"
@@ -169,6 +170,10 @@ parser.add_argument('--initialization', type=float, default=-1.,
 args = parser.parse_args()
 
 #args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# Select the most free device by memory
+devices = GPUtil.getAvailable(order = 'memory', limit = 5, maxLoad = 0.8, maxMemory = 0.8, includeNan=False, excludeID=[], excludeUUID=[])
+# import ipdb; ipdb.set_trace()
+args.device = torch.device(devices[0])
 
 args.base_model_names = [
 #    'seq2seqdilate',
@@ -565,7 +570,7 @@ dataset[agg_method][level] = data_processor.get_processed_data(args, agg_method,
 
 # ----- End : Load all datasets ----- #
 
-# ----- Start: base models training ----- #
+# ----- Start: Models training ----- #
 # set_trace()
 for base_model_name in args.base_model_names:
     base_models[base_model_name] = {}
@@ -645,9 +650,9 @@ for base_model_name in args.base_model_names:
 writer.close()
             #import ipdb
             #ipdb.set_trace()
-# ----- End: base models training ----- #
+# ----- End: Models training ----- #
 
-# ----- Start: Inference models for bottom level----- #
+# ----- Start: Inference ----- #
 print('\n Starting Inference Models')
 
 #import ipdb
@@ -678,8 +683,7 @@ def run_inference_model(
         inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
 
     elif inf_model_name in ['TRANS-MSE-AR']:
-        base_models_dict = base_models['trans-mse-ar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
+        inf_net = base_models['trans-mse-ar']['sum'][1]
 
     elif inf_model_name in ['TRANS-HUBER-AR']:
         base_models_dict = base_models['trans-huber-ar']
@@ -769,23 +773,20 @@ def run_inference_model(
         inf_test_targets_dict = None
 
     inf_net.eval()
-    (
-        inputs, target, pred_mu, pred_std, pred_d, pred_v,
-        metric_mse, metric_dtw, metric_tdi, metric_crps, metric_mae, metric_smape,
-        total_time
-    ) = eval_inf_model(args, inf_net, dataset, which_split, args.gamma, verbose=1)
+    outputs_dict, metrics_dict = eval_base_model(
+        args, inf_model_name, inf_net, dataset['sum'][1]['testloader'],
+        dataset['sum'][1]['test_norm'], args.gamma, 'test'
+    )
+    inputs, target = outputs_dict['inputs'], outputs_dict['target']
+    pred_mu, pred_std, pred_d, pred_v = outputs_dict['pred_mu'], outputs_dict['pred_std'], outputs_dict['pred_d'], outputs_dict['pred_v']
+    metric_mse, metric_dtw, metric_tdi, metric_crps, metric_mae, metric_smape, total_time = metrics_dict['metric_mse'], metrics_dict['metric_dtw'], metrics_dict['metric_tdi'], metrics_dict['metric_crps'], metrics_dict['metric_mae'], metrics_dict['metric_smape'], metrics_dict['total_time']
 
-    if inf_net.covariance == False:
-        pred_v_foragg = None
-    else:
-        pred_v_foragg = pred_v
     #import ipdb ; ipdb.set_trace()
     agg2metrics = eval_aggregates(
-        inputs, target, pred_mu, pred_std, pred_d, pred_v_foragg
+        inputs, target, pred_mu, pred_std, pred_d, pred_v
     )
 
     inference_models[inf_model_name] = inf_net
-    metric_mse = metric_mse.item()
 
     print('Metrics for Inference model {}: MAE:{:f}, CRPS:{:f}, MSE:{:f}, SMAPE:{:f}, Time:{:f}'.format(
         inf_model_name, metric_mae, metric_crps, metric_mse, metric_smape, total_time)
@@ -815,45 +816,6 @@ model2metrics = dict()
 model2aggmetrics = dict()
 for inf_model_name in args.inference_model_names:
 
-    if args.cv_inf:
-        # Consider all possible combinations of aggregate methods
-        aggregate_methods = []
-        for l in range(1, len(args.aggregate_methods)+1):
-            aggregate_methods += list(itertools.combinations(args.aggregate_methods, l))
-        # Single value of K is used in a hyper-parameter config for inference model
-        K_list = []
-        if len(args.K_list) == 1:
-            K_list = [args.K_list]
-        else:
-            for K in args.K_list:
-                if K != 1:
-                    K_list.append([1, K])
-
-        hparam_configs = list(itertools.product(aggregate_methods, K_list))
-
-        hparams2metrics = []
-        for agg_method, K in hparam_configs:
-            print('cv with agg_method, K:', agg_method, K)
-            metric2val, agg2metrics = run_inference_model(
-                args, inf_model_name, base_models, 'dev', opt_normspace,
-                agg_method, K
-            )
-            hparams2metrics.append(metric2val)
-        cv_metric =  'crps'
-        best_cfg_idx, _ = min(enumerate(hparams2metrics), key=lambda x: x[1]['crps'])
-        print(
-            'best_cfg_idx:', best_cfg_idx,
-            'best_agg_method and best K:', hparam_configs[best_cfg_idx],
-        )
-        metric2val, agg2metrics = run_inference_model(
-            args, inf_model_name, base_models, 'test', opt_normspace,
-            hparam_configs[best_cfg_idx][0],
-            hparam_configs[best_cfg_idx][1]
-        )
-        model2metrics[inf_model_name] = metric2val
-        model2aggmetrics[inf_model_name] = agg2metrics
-    else:
-        #raise NotImplementedError
         metric2val, agg2metrics = run_inference_model(
             args, inf_model_name, base_models, 'test', opt_normspace
         )
@@ -882,4 +844,4 @@ for model_name, metrics_dict in model2metrics.items():
 with open(os.path.join(args.output_dir, 'results_'+args.dataset_name+'.json'), 'w') as fp:
     json.dump(model2metrics, fp)
 
-# ----- End: Inference models for bottom level----- #
+# ----- End: Inference ----- #
