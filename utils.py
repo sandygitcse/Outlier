@@ -476,7 +476,7 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
     def __init__(
         self, data, enc_len, dec_len, feats_info, which_split,
         tsid_map=None, input_norm=None, target_norm=None,
-        norm_type=None, feats_norms=None, train_obj=None
+        norm_type=None, feats_norms=None, train_obj=None,options = []
     ):
         super(TimeSeriesDatasetOfflineAggregate, self).__init__()
 
@@ -491,6 +491,7 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         self.feats_info = feats_info
         self.tsid_map = tsid_map
         self.feats_norms = feats_norms
+        self.options = options
         #self.train_obj = train_obj
         #self.generate_a()
 
@@ -606,7 +607,13 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         #output_size = len(self.data[0]['target'][0])
         output_size = 1
         return output_size
+    def get_mask(self,ex_mask):
+        ex_mask = torch.tensor(ex_mask,dtype=bool)
+        head1 = ex_mask * ex_mask.unsqueeze(-1)
+        head2 = torch.zeros_like(head1)==1
 
+        ex_mask = torch.stack((head1,head1))
+        return ex_mask
     def __len__(self):
         return len(self.indices)
 
@@ -627,8 +634,9 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         ex_target = self.data[ts_id]['target'][ pos_id+el : pos_id+el+dl ]
         # ex_target = self.data[ts_id]['target'][ pos_id : pos_id+el ]
         #### anomalies only in test data
-        if self.which_split in ['train','dev','test']:
-            ex_input = self.data[ts_id]['target'][ pos_id : pos_id+el ]
+        # set_trace()
+        if self.which_split in self.options:
+            ex_input = self.data[ts_id]['target_inj'][ pos_id : pos_id+el ]
         
         # print('after', ex_input.shape, ex_target.shape, ts_id, pos_id)
         # import pdb;pdb.set_trace()
@@ -672,9 +680,15 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         #print(ex_input.shape, ex_target.shape, ex_input_feats.shape, ex_target_feats.shape)
         # set_trace()
 
-        attn_mask = torch.ones(self.base_enc_len,self.base_enc_len)
-        ex_mask = attn_mask.masked_fill(ex_mask==1,value=-1e9)
+        # attn_mask = torch.ones(self.base_enc_len,self.base_enc_len)
+        # ex_mask = attn_mask.masked_fill(ex_mask==1,value=-1e9)
 
+        ex_mask = self.get_mask(ex_mask)
+        # attn_mask = torch.ones(self.base_enc_len,self.base_enc_len)!=1.
+        # # print(ex_mask)
+        # ex_mask = attn_mask.masked_fill(ex_mask==True,value=True)
+
+        # set_trace()
         return (
             ex_input, ex_target, ex_mask,
             ex_input_feats, ex_target_feats,
@@ -754,7 +768,7 @@ class DataProcessor(object):
             self.data_train, args.N_input, args.N_output,
             which_split='train',
             norm_type=args.normalize,
-            feats_info=self.feats_info,
+            feats_info=self.feats_info,options=args.options
         )
 
         # set_trace()
@@ -777,7 +791,7 @@ class DataProcessor(object):
             feats_info=self.feats_info,
             tsid_map=self.dev_tsid_map,
             feats_norms=feats_norms,
-            train_obj=lazy_dataset_train
+            train_obj=lazy_dataset_train,options=args.options
         )
         print('Number of chunks in dev data:', len(lazy_dataset_dev))
         lazy_dataset_test = TimeSeriesDatasetOfflineAggregate(
@@ -789,7 +803,7 @@ class DataProcessor(object):
             feats_info=self.feats_info,
             tsid_map=self.test_tsid_map,
             feats_norms=feats_norms,
-            train_obj=lazy_dataset_train
+            train_obj=lazy_dataset_train,options=args.options
         )
         print('Number of chunks in test data:', len(lazy_dataset_test))
         if len(lazy_dataset_train) >= args.batch_size:

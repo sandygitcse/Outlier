@@ -109,11 +109,14 @@ def train_model(
             else:
                 teacher_force = False
 
+            if args.nhead >1:
+                mask = mask.transpose(1,0).reshape(-1,N_input,N_input)
             # import pdb;pdb.set_trace()
+            
             out = net(
                 feats_in.to(args.device), inputs.to(args.device),
                 feats_tgt.to(args.device), target.to(args.device),
-                teacher_force=teacher_force,mask=None
+                teacher_force=teacher_force,mask=mask.to(args.device) if args.mask==1 else None
             )
             if net.is_signature:
                 if net.estimate_type in ['point']:

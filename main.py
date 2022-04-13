@@ -57,6 +57,10 @@ parser.add_argument('--normalize', type=str, default=None,
                     help='Normalization type (avg, avg_per_series, quantile90, std)')
 parser.add_argument('--epochs', type=int, default=-1,
                     help='number of training epochs')
+parser.add_argument('--options', type=str, nargs='*', default=[],
+                    help='List of places to inject anomaly')
+parser.add_argument('--mask', type=int, default=0,
+                    help='masking the input sequence')
 
 parser.add_argument('--print_every', type=int, default=50,
                     help='Print test output after every print_every epochs')
@@ -541,10 +545,10 @@ for base_model_name in args.base_model_names:
 
 
     # Create the network
-    # import pdb;pdb.set_trace()
+    import pdb;pdb.set_trace()
     net_gru = get_base_model(
         args, base_model_name, N_input, N_output, input_size, output_size,
-        estimate_type, feats_info
+        estimate_type, feats_info,args.nhead
     )
 
     # train the network

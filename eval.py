@@ -44,11 +44,13 @@ def eval_base_model(args, model_name, net, loader, norm, gamma, which_split, ver
         #    import ipdb
         #    ipdb.set_trace()
         # DO NOT PASS TARGET during forward pass
-        #import ipdb ; ipdb.set_trace()
+        # import pdb ; pdb.set_trace()
+        if args.nhead >1:
+                mask = mask.transpose(1,0).reshape(-1,args.N_input,args.N_input)
         with torch.no_grad():
             out = net(
                 feats_in.to(args.device), batch_inputs.to(args.device), feats_tgt.to(args.device),
-                batch_target.to(args.device)
+                batch_target.to(args.device),mask=mask.to(args.device) if args.mask==1 else None
             )
             if net.is_signature:
                 if net.estimate_type in ['point']:
