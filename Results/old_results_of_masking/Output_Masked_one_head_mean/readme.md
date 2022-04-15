@@ -1,0 +1,1 @@
+this model has one mask and the masked values are assigned to mean of the chunck. masking is done for train test and dev data.

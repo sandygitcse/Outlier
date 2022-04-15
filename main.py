@@ -481,13 +481,36 @@ for name in args.base_model_names:
 
 # DUMP_PATH = '/mnt/infonas/data/pratham/Forecasting/DILATE'
 DUMP_PATH = '.'
-args.output_dir = os.path.join(DUMP_PATH, args.output_dir)
-args.saved_models_dir = os.path.join(DUMP_PATH, args.saved_models_dir)
+if len(args.options)==0:
+    op = "original"
+if "train" in args.options:
+    op = "train"
+if "test" in args.options:
+    op = "test"
+if len(args.options)==3:
+    op = "all"
+
+filen = f"electricity_nhead_{args.nhead}_mask_{args.mask}_options_{op}"
+args.output_dir = os.path.join(DUMP_PATH, args.output_dir,filen)
+args.saved_models_dir = os.path.join(DUMP_PATH, args.saved_models_dir,filen)
 os.makedirs(args.output_dir, exist_ok=True)
 os.makedirs(args.saved_models_dir, exist_ok=True)
+dict_args = dict()
+dict_args['saved_dir']=args.saved_models_dir
+dict_args['batch_size']=args.batch_size
+dict_args['hidden_size']=args.hidden_size
+dict_args['mask']=args.mask
+dict_args['nhead']=args.nhead
+dict_args['options']=args.options
+dict_args['epoch']=args.epochs
+json_obj = json.dumps(dict_args,indent=8)
+with open(args.output_dir+"/arguments.json",'w+') as files:
+    files.write(json_obj)
 
 
 
+
+# set_trace()
 #dataset = utils.get_processed_data(args)
 data_processor = utils.DataProcessor(args)
 #level2data = dataset['level2data']
@@ -545,7 +568,7 @@ for base_model_name in args.base_model_names:
 
 
     # Create the network
-    import pdb;pdb.set_trace()
+    # import pdb;pdb.set_trace()
     net_gru = get_base_model(
         args, base_model_name, N_input, N_output, input_size, output_size,
         estimate_type, feats_info,args.nhead

@@ -156,7 +156,7 @@ class PositionalEncoding(nn.Module):
 class ARTransformerModel(nn.Module):
     def __init__(
             self, dec_len, feats_info, estimate_type, use_feats, t2v_type,
-            v_dim, kernel_size, nkernel, device, is_signature=False,nhead=None
+            v_dim, kernel_size, nkernel, device, is_signature=False,nhead=1
         ):
         super(ARTransformerModel, self).__init__()
 
@@ -166,6 +166,7 @@ class ARTransformerModel(nn.Module):
         self.use_feats = use_feats
         self.t2v_type = t2v_type
         self.v_dim = v_dim
+        self.nhead = nhead
         self.device = device
         self.is_signature = is_signature
         self.use_covariate_var_model = False
@@ -234,12 +235,12 @@ class ARTransformerModel(nn.Module):
             #import ipdb ; ipdb.set_trace()
 
         self.encoder_layer = nn.TransformerEncoderLayer(
-            d_model=enc_input_size, nhead=nhead, dropout=0, dim_feedforward=512
+            d_model=enc_input_size, nhead=self.nhead, dropout=0, dim_feedforward=512
         )
         self.encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=2)
 
         self.decoder_layer = nn.TransformerDecoderLayer(
-            d_model=nkernel, nhead=nhead, dropout=0, dim_feedforward=512
+            d_model=nkernel, nhead=self.nhead, dropout=0, dim_feedforward=512
         )
         self.decoder_mean = nn.TransformerDecoder(self.decoder_layer, num_layers=2)
         if self.estimate_type in ['variance', 'covariance', 'bivariate']:
@@ -2181,12 +2182,12 @@ class Net_GRU(nn.Module):
 
 def get_base_model(
     args, base_model_name, N_input, N_output,
-    input_size, output_size, estimate_type, feats_info,nhead=None
+    input_size, output_size, estimate_type, feats_info,nhead=1
 ):
 
     #hidden_size = max(int(config['hidden_size']*1.0/int(np.sqrt(level))), args.fc_units)
     hidden_size = args.hidden_size
-
+    
     if base_model_name in ['rnn-mse-nar', 'rnn-nll-nar', 'rnn-fnll-nar']:
         net_gru = RNNNARModel(
             dec_len=N_output,
