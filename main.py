@@ -48,6 +48,8 @@ parser.add_argument('--output_dir', type=str,
                     help='Path to store all raw outputs', default=None)
 parser.add_argument('--saved_models_dir', type=str,
                     help='Path to store all saved models', default=None)
+parser.add_argument('--message', type=str,
+                    help='Message regarding saved models', default=None)
 
 parser.add_argument('--ignore_ckpt', action='store_true', default=False,
                     help='Start the training without loading the checkpoint')
@@ -490,7 +492,7 @@ if "test" in args.options:
 if len(args.options)==3:
     op = "all"
 
-filen = f"electricity_nhead_{args.nhead}_mask_{args.mask}_options_{op}"
+filen = f"electricity_nhead_{args.nhead}_mask_{args.mask}_options_{op}_{args.message}"
 args.output_dir = os.path.join(DUMP_PATH, args.output_dir,filen)
 args.saved_models_dir = os.path.join(DUMP_PATH, args.saved_models_dir,filen)
 os.makedirs(args.output_dir, exist_ok=True)
@@ -503,6 +505,7 @@ dict_args['mask']=args.mask
 dict_args['nhead']=args.nhead
 dict_args['options']=args.options
 dict_args['epoch']=args.epochs
+dict_args['message'] = args.message
 json_obj = json.dumps(dict_args,indent=8)
 with open(args.output_dir+"/arguments.json",'w+') as files:
     files.write(json_obj)

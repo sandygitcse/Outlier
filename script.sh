@@ -140,14 +140,15 @@
 
 python main.py electricity \
 	--N_input 336 --N_output 168 \
-	--saved_models_dir saved_models/Masking/\
-	--output_dir Results/Masking/\
+	--saved_models_dir saved_models/UnMask/\
+	--output_dir Results/Unmask/\
 	--nhead 4\
-	--mask 1\
+	--mask 0\
 	--K_list 1 \
 	--cv_inf 0 \
-	--device cuda:0
-	--options test
+	--device cuda:0\
+	--message Without_imputation\
+	--options train
 
 #python main.py foodinflation \
 #	--N_input 90 --N_output 30 \

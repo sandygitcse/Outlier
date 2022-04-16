@@ -615,8 +615,9 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         head2 = torch.zeros_like(head1)==1
         if self.nhead == 1:
             return head1
-
-        ex_mask = torch.stack([head1]*self.nhead)
+        
+        # ex_mask = torch.stack(tuple(head1.repeat(self.nhead,1)))
+        ex_mask = torch.stack((head1,head1,head1,head1))
         return ex_mask
     def __len__(self):
         return len(self.indices)
@@ -647,7 +648,8 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         # for ind,val in enumerate(ex_mask):
         #     if val == 1:
         #         ex_input[ind]=mvalue
-        ex_input[ex_mask==1]=mvalue
+        
+        # ex_input[ex_mask==1]=mvalue
         # print('after', ex_input.shape, ex_target.shape, ts_id, pos_id)
         
         if self.tsid_map is None:
