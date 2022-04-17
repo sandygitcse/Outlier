@@ -98,12 +98,16 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     df_inject   = pd.read_csv(
         os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', '2_percent_electricity.csv')
     )
+    df_mask   = pd.read_csv(
+        os.path.join('.', 'data', 'masked.csv')
+    )
+
 
     # test_data = np.load(os.path.join(DATA_DIRS,"Outliers","Outlier","test_data.npy"))
     # test_l = len(test_data)
     data = df[['nat_demand']].to_numpy().T
     data_inj = df_inject[['nat_demand']].to_numpy().T
-    data_mask = df_inject[['label']].to_numpy().T
+    data_mask = df_mask[['label']].to_numpy().T
     
     # data_inj = data
     #n = data.shape[1]
