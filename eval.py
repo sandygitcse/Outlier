@@ -3,20 +3,18 @@ import torch
 from tslearn.metrics import dtw, dtw_path
 from utils import unnormalize, normalize
 import utils
-from loss.dilate_loss import dilate_loss
 import properscoring as ps
 import time
 
 import train
 
 
-def eval_base_model(args, model_name, net, loader, norm, gamma, which_split, verbose=1):
+def eval_base_model(args, model_name, net, loader, norm, which_split, verbose=1):
 
     inputs, target, pred_mu, pred_std, pred_d, pred_v = [], [], [], [], [], []
 
     criterion = torch.nn.MSELoss()
     criterion_mae = torch.nn.L1Loss()
-    losses_dilate = []
     losses_mse = []
     losses_mae = []
     losses_dtw = []
@@ -137,12 +135,6 @@ def eval_base_model(args, model_name, net, loader, norm, gamma, which_split, ver
     loss_mae = criterion_mae(target, pred_mu).item()
     loss_smape = 200. * ((torch.abs(target-pred_mu)) / (torch.abs(target) + torch.abs(pred_mu))).mean()
 
-    # DILATE loss
-    if model_name in ['seq2seqdilate']:
-        loss_dilate, loss_shape, loss_temporal = dilate_loss(target, pred_mu, args.alpha, args.gamma, args.device)
-    else:
-        loss_dilate = torch.zeros([])
-    loss_dilate = loss_dilate.item()
 
     # DTW and TDI
     loss_dtw, loss_tdi = 0,0
@@ -205,7 +197,6 @@ def eval_base_model(args, model_name, net, loader, norm, gamma, which_split, ver
     )(target, pred_mu, pred_std).item()
 
 
-    metric_dilate = loss_dilate
     metric_mse = loss_mse
     metric_mae = loss_mae
     metric_dtw = loss_dtw
@@ -217,8 +208,7 @@ def eval_base_model(args, model_name, net, loader, norm, gamma, which_split, ver
     metric_smape = loss_smape.mean()
     total_time = end_time - start_time
 
-    print('Eval dilateloss= ', metric_dilate, \
-        'mse= ', metric_mse, ' dtw= ', metric_dtw, ' tdi= ', metric_tdi,
+    print('Eval mse= ', metric_mse, ' dtw= ', metric_dtw, ' tdi= ', metric_tdi,
         'crps=', metric_crps, 'crps_parts=', metric_crps_part,
         'nll=', metric_nll, 'ql=', metric_ql)
 
@@ -227,7 +217,7 @@ def eval_base_model(args, model_name, net, loader, norm, gamma, which_split, ver
         pred_d=pred_d, pred_v=pred_v
     )
     metrics_dict = dict(
-        metric_dilate=metric_dilate, metric_mse=metric_mse,
+        metric_mse=metric_mse,
         metric_dtw=metric_dtw, metric_tdi=metric_tdi,
         metric_crps=metric_crps, metric_mae=metric_mae,
         metric_crps_part=metric_crps_part,
@@ -237,130 +227,6 @@ def eval_base_model(args, model_name, net, loader, norm, gamma, which_split, ver
     )
 
     return outputs_dict, metrics_dict
-
-def eval_inf_model(args, net, dataset, which_split, gamma, verbose=1):
-    '''
-        which_split: str (train, dev, test)
-    '''
-    if which_split in ['train']:
-        raise NotImplementedError
-    elif which_split in ['dev']:
-        loader_str = 'devloader'
-        norm_str = 'dev_norm'
-    elif which_split in ['test']:
-        loader_str = 'testloader'
-        norm_str = 'test_norm'
-
-    criterion = torch.nn.MSELoss()
-    criterion_mae = torch.nn.L1Loss()
-
-    num_batches = 0
-    for _ in dataset['sum'][1][loader_str]:
-        num_batches += 1
-
-    iters = {}
-    for agg_method in args.aggregate_methods:
-        iters[agg_method] = {}
-        for K in args.K_list:
-            iters[agg_method][K] = iter(dataset[agg_method][K][loader_str])
-
-    norms = {}
-    for agg_method in args.aggregate_methods:
-        norms[agg_method] = {}
-        for K in args.K_list:
-            norms[agg_method][K] = dataset[agg_method][K][norm_str]
-
-    inputs, mapped_ids, target, pred_mu, pred_d, pred_v, pred_std = [], [], [], [], [], [], []
-    start_time = time.time()
-    for i in range(num_batches):
-        dataset_batch = {}
-        for agg_method in args.aggregate_methods:
-            dataset_batch[agg_method] = {}
-            for K in args.K_list:
-                dataset_batch[agg_method][K] = iters[agg_method][K].next()
-
-        #import ipdb ; ipdb.set_trace()
-        print('Batch id:', i, num_batches)
-        batch_pred_mu, batch_pred_d, batch_pred_v, batch_pred_std = net(
-            dataset_batch, norms, which_split
-        )
-
-        batch_target = dataset_batch['sum'][1][1]
-
-        pred_mu.append(batch_pred_mu.cpu())
-        pred_d.append(batch_pred_d.cpu())
-        pred_v.append(batch_pred_v.cpu())
-        pred_std.append(batch_pred_std.cpu())
-        target.append(batch_target.cpu())
-        inputs.append(dataset_batch['sum'][1][0])
-        mapped_ids.append(dataset_batch['sum'][1][5])
-
-    end_time = time.time()
-
-    pred_mu = torch.cat(pred_mu, dim=0)
-    pred_d = torch.cat(pred_d, dim=0)
-    pred_v = torch.cat(pred_v, dim=0)
-    pred_std = torch.cat(pred_std, dim=0)
-    target = torch.cat(target, dim=0)
-
-    inputs = torch.cat(inputs, dim=0)
-    mapped_ids = torch.cat(mapped_ids, dim=0)
-    inputs = dataset['sum'][1][norm_str].unnormalize(
-        inputs[..., 0], ids=mapped_ids
-    )
-    #import ipdb ; ipdb.set_trace()
-    #if which_split in ['dev']:
-    #    target = dataset['sum'][1][norm_str].unnormalize(
-    #        target[..., 0], ids=mapped_ids
-    #    ).unsqueeze(-1)
-
-    # if args.initialization:
-    #     target = utils.get_inputs_median(inputs.unsqueeze(-1), target)
-
-    # MSE
-    loss_mse = criterion(target, pred_mu)
-    loss_mae = criterion_mae(target, pred_mu)
-    loss_smape = 200. * ((torch.abs(target-pred_mu)) / (torch.abs(target) + torch.abs(pred_mu))).mean()
-    loss_dtw, loss_tdi = 0,0
-    # DTW and TDI
-    batch_size, N_output = target.shape[0:2]
-    for k in range(batch_size):
-        target_k_cpu = target[k,:,0:1].view(-1).detach().cpu().numpy()
-        output_k_cpu = pred_mu[k,:,0:1].view(-1).detach().cpu().numpy()
-
-        loss_dtw += dtw(target_k_cpu,output_k_cpu)
-        path, sim = dtw_path(target_k_cpu, output_k_cpu)
-
-        Dist = 0
-        for i,j in path:
-                Dist += (i-j)*(i-j)
-        loss_tdi += Dist / (N_output*N_output)
-
-    loss_dtw = loss_dtw /batch_size
-    loss_tdi = loss_tdi / batch_size
-
-    # CRPS
-    loss_crps = ps.crps_gaussian(
-        target, mu=pred_mu.detach().numpy(), sig=pred_std.detach().numpy()
-    ).mean()
-
-    #import ipdb ; ipdb.set_trace()
-    metric_mse = loss_mse.mean()
-    metric_mae = loss_mae.mean()
-    metric_dtw = loss_dtw
-    metric_tdi = loss_tdi
-    metric_crps = loss_crps
-    metric_smape = loss_smape.mean()
-    total_time = end_time - start_time
-
-    #print('Eval mse= ', metric_mse, ' dtw= ', metric_dtw, ' tdi= ', metric_tdi)
-    #import ipdb ; ipdb.set_trace()
-
-    return (
-        inputs, target, pred_mu, pred_std, pred_d, pred_v,
-        metric_mse, metric_dtw, metric_tdi,
-        metric_crps, metric_mae, metric_smape, total_time
-    )
 
 
 def eval_aggregates(inputs, target, mu, std, d, v=None, K_list=None):

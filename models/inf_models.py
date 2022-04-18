@@ -12,16 +12,6 @@ import utils
 
 device = 'cuda'
 
-class DILATE(torch.nn.Module):
-    """docstring for DILATE"""
-    def __init__(self, base_models_dict, device):
-        super(DILATE, self).__init__()
-        self.base_models_dict = base_models_dict
-        self.device = device
-
-    def forward(self, feats_in_dict, inputs_dict, feats_tgt_dict, norm_dict, targets_dict=None):
-        return self.base_models_dict[1].to(self.device)(feats_in_dict[1], inputs_dict[1], feats_tgt_dict[1])
-
 class MSE(torch.nn.Module):
     """docstring for MSE"""
     def __init__(self, base_models_dict, device):

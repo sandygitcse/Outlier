@@ -3,7 +3,6 @@ import pdb
 import numpy as np
 import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from loss.dilate_loss import dilate_loss
 from eval import eval_base_model
 import time
 from models.base_models import get_base_model
@@ -146,8 +145,6 @@ def train_model(
             ]:
                 loss_mse = criterion(target.to(args.device), means.to(args.device))
                 loss = loss_mse
-            if model_name in ['seq2seqdilate']:
-                loss, loss_shape, loss_temporal = dilate_loss(target, means, args.alpha, args.gamma, args.device)
 
             ## this is for huber loss
             if model_name in ['trans-huber-ar']:
@@ -291,12 +288,11 @@ def train_model(
             #    break
             if (curr_step % args.print_every == 0):
                 outputs_dict, metrics_dict = eval_base_model(
-                    args, model_name, net, devloader, norm, args.gamma, 'val', verbose=1
+                    args, model_name, net, devloader, norm, 'val', verbose=1
                 )
 
-                if model_name in ['seq2seqdilate']:
-                    metric = metrics_dict['metric_dilate']
-                elif 'mse' in model_name:
+
+                if 'mse' in model_name:
                     #metric = metric_crps
                     metric = metrics_dict['metric_mse']
                 elif 'huber' in model_name:
@@ -307,7 +303,7 @@ def train_model(
                     #metric = metric_crps
                 elif '-q-' in model_name:
                     metric = metrics_dict['metric_ql']
-                metric_dilate, metric_mse, metric_dtw, metric_tdi, metric_crps, metric_mae, metric_smape, total_time = metrics_dict['metric_dilate'], metrics_dict['metric_mse'], metrics_dict['metric_dtw'], metrics_dict['metric_tdi'], metrics_dict['metric_crps'], metrics_dict['metric_mae'], metrics_dict['metric_smape'], metrics_dict['total_time']
+                metric_mse, metric_dtw, metric_tdi, metric_crps, metric_mae, metric_smape, total_time = metrics_dict['metric_mse'], metrics_dict['metric_dtw'], metrics_dict['metric_tdi'], metrics_dict['metric_crps'], metrics_dict['metric_mae'], metrics_dict['metric_smape'], metrics_dict['total_time']
                 metric_nll, metric_ql = metrics_dict['metric_nll'], metrics_dict['metric_ql']
 
 
@@ -330,8 +326,6 @@ def train_model(
                 scheduler.step(metric)
 
                 # ...log the metrics
-                if model_name in ['seq2seqdilate']:
-                    writer.add_scalar('dev_metrics/dilate', metric_dilate, curr_step)
                 writer.add_scalar('dev_metrics/crps', metric_crps, curr_step)
                 writer.add_scalar('dev_metrics/mae', metric_mae, curr_step)
                 writer.add_scalar('dev_metrics/mse', metric_mse, curr_step)
@@ -343,8 +337,6 @@ def train_model(
                 break
 
         # ...log the epoch_loss
-        if model_name in ['seq2seqdilate']:
-            writer.add_scalar('training_loss/DILATE', epoch_loss, curr_epoch)
         if model_name in [
             'seq2seqmse', 'convmse', 'convmsenonar', 'rnn-mse-nar', 'trans-mse-nar', 'rnn-mse-ar',
             'nbeats-mse-nar', 'nbeatsd-mse-nar'
@@ -378,12 +370,7 @@ def train_model(
     #     metric_crps, metric_mae, metric_crps_part, metric_nll, metric_ql
     # ) 
     outputs_dict, metrics_dict = eval_base_model(
-        args, model_name, net, devloader, norm, args.gamma, 'val', verbose=1
+        args, model_name, net, devloader, norm, 'val', verbose=1
     )
 
-    if model_name in ['seq2seqdilate']:
-        metric = metrics_dict['metric_dilate']
-    else:
-        metric = metrics_dict['metric_crps']
-
-    return metric
+    return
