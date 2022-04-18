@@ -6,7 +6,6 @@ import numpy as np
 import torch
 from models.base_models import EncoderRNN, DecoderRNN, Net_GRU, NetFullyConnected, get_base_model
 from models.index_models import get_index_model
-from loss.dilate_loss import dilate_loss
 from train import train_model, get_optimizer
 from eval import eval_base_model, eval_inf_model, eval_aggregates
 from torch.utils.data import DataLoader
@@ -80,10 +79,6 @@ parser.add_argument('--fc_units', type=int, default=16, #nargs='+',
 parser.add_argument('--batch_size', type=int, default=-1,
                     help='Input batch size')
 
-parser.add_argument('--gamma', type=float, default=0.01, nargs='+',
-                   help='gamma parameter of DILATE loss')
-parser.add_argument('--alpha', type=float, default=0.5,
-                   help='alpha parameter of DILATE loss')
 parser.add_argument('--teacher_forcing_ratio', type=float, default=1.0,
                    help='Probability of applying teacher forcing to a batch')
 parser.add_argument('--deep_std', action='store_true', default=False,
@@ -105,8 +100,6 @@ parser.add_argument('--v_dim', type=int, default=-1,
 parser.add_argument('--b', type=int, default=-1,
                    help='Number of correlation terms to sample for loss computation during training')
 
-#parser.add_argument('--use_feats', action='store_true', default=False,
-#                    help='Use time features derived from calendar-date and other covariates')
 parser.add_argument('--use_feats', type=int, default=-1,
                     help='Use time features derived from calendar-date and other covariates')
 
@@ -117,31 +110,9 @@ parser.add_argument('--t2v_type', type=str,
 parser.add_argument('--use_coeffs', action='store_true', default=False,
                     help='Use coefficients obtained by decomposition, wavelet, etc..')
 
-
-# Hierarchical model arguments
-parser.add_argument('--L', type=int, default=2,
-                    help='number of levels in the hierarchy, leaves inclusive')
-
-parser.add_argument('--K_list', type=int, nargs='*', default=[],
-                    help='List of bin sizes of each aggregation')
-
-parser.add_argument('--wavelet_levels', type=int, default=2,
-                    help='number of levels of wavelet coefficients')
-parser.add_argument('--fully_connected_agg_model', action='store_true', default=False,
-                    help='If True, aggregate model will be a feed-forward network')
-parser.add_argument('--transformer_agg_model', action='store_true', default=False,
-                    help='If True, aggregate model will be a Transformer')
-parser.add_argument('--plot_anecdotes', action='store_true', default=False,
-                    help='Plot the comparison of various methods')
-parser.add_argument('--save_agg_preds', action='store_true', default=False,
-                    help='Save inputs, targets, and predictions of aggregate base models')
-
 parser.add_argument('--device', type=str,
                     help='Device to run on', default=None)
-
 # parameters for ablation study
-parser.add_argument('--leak_agg_targets', action='store_true', default=False,
-                    help='If True, aggregate targets are leaked to inference models')
 parser.add_argument('--patience', type=int, default=50,
                     help='Stop the training if no improvement shown for these many \
                           consecutive steps.')
@@ -159,15 +130,6 @@ parser.add_argument('--dim_ff', type=int, default=512,
 parser.add_argument('--nhead', type=int, default=4,
                     help='Number of attention heads (in ARTransformerModel)')
 
-
-# Cross-validation parameters
-parser.add_argument('--cv_inf', type=int, default=-1,
-                    help='Cross-validate the Inference models based on score on dev data')
-
-# Learning rate for Inference Model
-parser.add_argument('--lr_inf', type=float, default=-1.,
-                    help='Learning rate for SGD-based inference model')
-
 parser.add_argument('--initialization', type=float, default=-1.,
                     help='=1 for training median prediction model')
 
@@ -182,7 +144,6 @@ devices = GPUtil.getAvailable(order = 'memory', limit = 5, maxLoad = 0.8, maxMem
 args.device = torch.device(devices[0])
 
 args.base_model_names = [
-#    'seq2seqdilate',
 #    'seq2seqnll',
 #    'seq2seqmse',
 #    'convmse',
@@ -215,16 +176,10 @@ args.base_model_names = [
 #    'transsig-nll-nar',
 ]
 
-if args.dataset_name in ['Traffic']:
-    args.alpha = 0.8
 
 if args.dataset_name in ['ECG5000']:
     args.teacher_forcing_ratio = 0.0
 
-if args.dataset_name in ['Solar']:
-    opt_normspace = False
-else:
-    opt_normspace = True
 
 #import ipdb ; ipdb.set_trace()
 if args.dataset_name == 'ett':
@@ -247,9 +202,6 @@ if args.dataset_name == 'ett':
     if args.use_feats == -1: args.use_feats = 1
     #args.t2v_type = 'idx'
     if args.device is None: args.device = 'cuda:2'
-    if args.cv_inf == -1: args.cv_inf = 1
-    if args.lr_inf == -1: args.lr_inf = 0.01
-    #python main.py ett --epochs 20 --N_input 192 --N_output 192 --K_list 6 --saved_models_dir saved_models_ett_d192 --output_dir Outputs_ett_d192_klnorm --normalize zscore_per_series --learning_rate 0.0001 --batch_size 64 --hidden_size 128 --num_grulstm_layers 1 --device cuda:0
 
 elif args.dataset_name == 'taxi30min':
     if args.epochs == -1: args.epochs = 20
@@ -270,8 +222,6 @@ elif args.dataset_name == 'taxi30min':
     if args.b == -1: args.b = 24
     #args.t2v_type = 'mdh_parti'
     if args.device is None: args.device = 'cuda:2'
-    if args.cv_inf == -1: args.cv_inf = 1
-    if args.lr_inf == -1: args.lr_inf = 0.01
 
 elif args.dataset_name == 'etthourly':
     if args.epochs == -1: args.epochs = 50
@@ -293,8 +243,6 @@ elif args.dataset_name == 'etthourly':
     if args.use_feats == -1: args.use_feats = 1
     #args.print_every = 5 # TODO: Only for aggregate models
     if args.device is None: args.device = 'cuda:2'
-    if args.cv_inf == -1: args.cv_inf = 1
-    if args.lr_inf == -1: args.lr_inf = 0.01
 
 elif args.dataset_name == 'azure':
     if args.epochs == -1: args.epochs = 20
@@ -317,7 +265,6 @@ elif args.dataset_name == 'azure':
     if args.use_feats == -1: args.use_feats = 1
     #args.t2v_type = None
     if args.device is None: args.device = 'cuda:0'
-    if args.cv_inf == -1: args.cv_inf = 1
 
 elif args.dataset_name == 'Solar':
     if args.epochs == -1: args.epochs = 20
@@ -338,8 +285,6 @@ elif args.dataset_name == 'Solar':
     if args.b == -1: args.b = 4
     if args.use_feats == -1: args.use_feats = 1
     if args.device is None: args.device = 'cuda:1'
-    if args.cv_inf == -1: args.cv_inf = 1
-    if args.lr_inf == -1: args.lr_inf = 0.001
 
 elif args.dataset_name == 'electricity':
     if args.epochs == -1: args.epochs = 50
@@ -360,8 +305,6 @@ elif args.dataset_name == 'electricity':
     if args.b == -1: args.b = 4
     if args.use_feats == -1: args.use_feats = 1
     if args.device is None: args.device = 'cuda:1'
-    if args.cv_inf == -1: args.cv_inf = 1
-    if args.lr_inf == -1: args.lr_inf = 0.01
 
 elif args.dataset_name == 'aggtest':
     if args.epochs == -1: args.epochs = 1
@@ -382,7 +325,6 @@ elif args.dataset_name == 'aggtest':
     if args.b == -1: args.b = args.N_output
     if args.use_feats == -1: args.use_feats = 1
     if args.device is None: args.device = 'cuda:2'
-    if args.cv_inf == -1: args.cv_inf = 1
 
 
 elif args.dataset_name == 'Traffic911':
@@ -420,8 +362,6 @@ elif args.dataset_name == 'foodinflation':
     if args.b == -1: args.b = 4
     if args.use_feats == -1: args.use_feats = 1
     if args.device is None: args.device = 'cuda:1'
-    if args.cv_inf == -1: args.cv_inf = 1
-    if args.lr_inf == -1: args.lr_inf = 0.01
 
 
 elif args.dataset_name == 'outlier':
@@ -443,8 +383,6 @@ elif args.dataset_name == 'outlier':
     if args.b == -1: args.b = 4
     if args.use_feats == -1: args.use_feats = 1
     if args.device is None: args.device = 'cuda:1'
-    if args.cv_inf == -1: args.cv_inf = 1
-    if args.lr_inf == -1: args.lr_inf = 0.01
 
 elif args.dataset_name == 'telemetry':
     if args.epochs == -1: args.epochs = 20
@@ -465,8 +403,6 @@ elif args.dataset_name == 'telemetry':
     if args.b == -1: args.b = 4
     if args.use_feats == -1: args.use_feats = 1
     if args.device is None: args.device = 'cuda:1'
-    if args.cv_inf == -1: args.cv_inf = 1
-    if args.lr_inf == -1: args.lr_inf = 0.01
     if args.initialization == -1: args.initialization = 1.
 
 print('Command Line Arguments:')
@@ -542,7 +478,7 @@ for base_model_name in args.base_model_names:
     test_norm = dataset['test_norm']
     
     if base_model_name in [
-        'seq2seqmse', 'seq2seqdilate', 'convmse', 'convmsenonar',
+        'seq2seqmse', 'convmse', 'convmsenonar',
         'rnn-mse-nar', 'rnn-mse-ar', 'trans-mse-nar', 'nbeats-mse-nar',
         'nbeatsd-mse-nar', 'trans-mse-ar', 'oracle', 'oracleforecast','trans-huber-ar'
     ]:
@@ -615,7 +551,7 @@ def run_inference_model(args, inf_model_name, base_models, which_split):
     inf_net.eval()
     outputs_dict, metrics_dict = eval_base_model(
         args, inf_model_name, inf_net, dataset['testloader'],
-        dataset['test_norm'], args.gamma, 'test'
+        dataset['test_norm'], 'test'
     )
     inputs, target = outputs_dict['inputs'], outputs_dict['target']
     pred_mu, pred_std, pred_d, pred_v = outputs_dict['pred_mu'], outputs_dict['pred_std'], outputs_dict['pred_d'], outputs_dict['pred_v']

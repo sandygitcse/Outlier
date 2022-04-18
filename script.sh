@@ -119,7 +119,6 @@
 #	--saved_models_dir aaai_saved_models_ett_e384_d192_chunkfix_3_lr1e5_prunelastday_rp \
 #	--output_dir aaai_Outputs_ett_e384_d192_chunkfix_3_lr1e5_prunelastday_rp \
 #	--K_list 1 4 6 12 \
-#	--cv_inf 0 \
 #	--device cuda:2
 
 #python main.py Solar \
@@ -127,7 +126,6 @@
 #	--saved_models_dir aaai_saved_models_Solar_e336_d168_2_rp \
 #	--output_dir aaai_Outputs_Solar_e336_d168_2_rp \
 #	--K_list 1 2 6 12 \
-#	--cv_inf 0 \
 #	--device cuda:2
 
 #python main.py etthourly \
@@ -135,7 +133,6 @@
 #	--saved_models_dir aaai_saved_models_etthourly_e168_d168_9_lr1e5_prunelastday_rp \
 #	--output_dir aaai_Outputs_etthourly_e168_d168_9_lr1e5_prunelastday_rp \
 #	--K_list 1 2 6 \
-#	--cv_inf 0 \
 #	--device cuda:1
 
 python main.py electricity \
@@ -144,8 +141,6 @@ python main.py electricity \
 	--output_dir Results/Mask/\
 	--nhead 4\
 	--mask 1\
-	--K_list 1 \
-	--cv_inf 0 \
 	--device cuda:0\
 	--message With_imputation_agmtn\
 	--options train test dev
@@ -154,16 +149,12 @@ python main.py electricity \
 #	--N_input 90 --N_output 30 \
 #	--saved_models_dir saved_models_foodinflation \
 #	--output_dir Outputs_foodinflation \
-#	--K_list 1 \
-#	--cv_inf 0 \
 #	--device cuda:1
 
 # python3 main.py telemetry \
 # 	--N_input 365 --N_output 100 \
 # 	--saved_models_dir saved_models_telemetry_tyt \
 # 	--output_dir Outputs_telemetry_t \
-# 	--K_list 1 \
-# 	--cv_inf 0 \
 # 	--initialization 0\
 # 	--device cuda:1
 
@@ -172,8 +163,6 @@ python main.py electricity \
 # 	--N_input 100 --N_output 50 \
 # 	--saved_models_dir saved_models/saved_models_synthetic_out_huber \
 # 	--output_dir Outputs/Outputs_synthetic_out_huber \
-# 	--K_list 1 \
-# 	--cv_inf 0 \
 # 	--initialization 0\
 # 	--device cuda:0
 
