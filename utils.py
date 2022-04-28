@@ -649,7 +649,7 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         #     if val == 1:
         #         ex_input[ind]=mvalue
         
-        ex_input[ex_mask==1]=mvalue
+        # ex_input[ex_mask==1]=mvalue
         # print('after', ex_input.shape, ex_target.shape, ts_id, pos_id)
         
         if self.tsid_map is None:

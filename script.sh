@@ -137,13 +137,13 @@
 
 python main.py electricity \
 	--N_input 336 --N_output 168 \
-	--saved_models_dir saved_models/Mask/\
-	--output_dir Results/Mask/\
+	--saved_models_dir saved_models/check/\
+	--output_dir Results/check/\
 	--nhead 4\
-	--mask 1\
+	--mask 0\
 	--device cuda:0\
-	--message With_imputation_agmtn\
-	--options train test dev
+	--message no_mean_test\
+	--options test
 
 #python main.py foodinflation \
 #	--N_input 90 --N_output 30 \
