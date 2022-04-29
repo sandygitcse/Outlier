@@ -648,8 +648,10 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         # for ind,val in enumerate(ex_mask):
         #     if val == 1:
         #         ex_input[ind]=mvalue
-        
+        # print("before",self.data[ts_id]['target_inj'][ pos_id : pos_id+el ])
+
         ex_input[ex_mask==1]=mvalue
+        # print(ex_mask,ex_input,pos_id,ts_id)
         # print('after', ex_input.shape, ex_target.shape, ts_id, pos_id)
         
         if self.tsid_map is None:
@@ -817,6 +819,7 @@ class DataProcessor(object):
             feats_norms=feats_norms,
             train_obj=lazy_dataset_train,options=args.options,nhead=args.nhead
         )
+        # set_trace()
         print('Number of chunks in test data:', len(lazy_dataset_test))
         if len(lazy_dataset_train) >= args.batch_size:
             batch_size = args.batch_size

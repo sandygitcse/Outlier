@@ -160,6 +160,7 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     data_dev, data_test,data_inj_dev,data_inj_test,data_mask_dev,data_mask_test = [], [],[],[],[],[]
     feats_dev, feats_test = [], []
     dev_tsid_map, test_tsid_map = [], []
+    seq_len = 2*N_input+N_output  #(336*2 + 168 = 840)
     for i in range(data.shape[0]):
         for j in range(train_len+N_output, train_len+dev_len+1, N_output):
             if j <= n:
@@ -171,11 +172,18 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     for i in range(data.shape[0]):
         for j in range(train_len+dev_len+N_output, n+1, N_output):
             if j <= n:
-                data_inj_test.append(data_inj[i,:j])
-                data_mask_test.append(data_mask[i,:j])
-                data_test.append(data[i, :j])
-                feats_test.append(feats[i, :j])
-                test_tsid_map.append(i)
+                for k in range(0,N_input-25,25):
+                    data_inj_test.append(torch.tensor(data_inj[i,:j]))
+                    mask = torch.zeros_like(data_mask[i,:j])
+                    
+                    start = j-seq_len+N_input
+                    # print(start+k,start+k+50)
+                    # mask[start+k:start+k+50]=1
+                    data_mask_test.append(mask)
+                    # set_trace()
+                    data_test.append(torch.tensor(data[i, :j]))
+                    feats_test.append(torch.tensor(feats[i, :j]))
+                    test_tsid_map.append(torch.tensor(i))
     
     data_train = get_list_of_dict_format(data_train,data_inj_train,data_mask_train)
     data_dev = get_list_of_dict_format(data_dev,data_inj_dev,data_mask_dev)
@@ -192,7 +200,7 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     for j in range(i, data_train[0]['feats'].shape[-1]):
         feats_info[j] = (-1, -1)
 
-    seq_len = 2*N_input+N_output  #(336*2 + 168 = 840)
+    
     data_dev = prune_dev_test_sequence(data_dev, seq_len) #54 * 840
     data_test = prune_dev_test_sequence(data_test, seq_len)
     # set_trace()

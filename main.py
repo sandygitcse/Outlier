@@ -7,7 +7,7 @@ import torch
 from models.base_models import EncoderRNN, DecoderRNN, Net_GRU, NetFullyConnected, get_base_model
 from models.index_models import get_index_model
 from train import train_model, get_optimizer
-from eval import eval_base_model, eval_inf_model, eval_aggregates
+from eval import eval_base_model, eval_aggregates
 from torch.utils.data import DataLoader
 import random
 from tslearn.metrics import dtw, dtw_path
@@ -141,7 +141,7 @@ args = parser.parse_args()
 # Select the most free device by memory
 devices = GPUtil.getAvailable(order = 'memory', limit = 5, maxLoad = 0.8, maxMemory = 0.8, includeNan=False, excludeID=[], excludeUUID=[])
 # import ipdb; ipdb.set_trace()
-args.device = torch.device(devices[0])
+# args.device = torch.device(devices[0])
 
 args.base_model_names = [
 #    'seq2seqnll',
@@ -159,8 +159,8 @@ args.base_model_names = [
 #    'rnn-mse-ar',
 #    'rnn-nll-ar',
    'trans-mse-ar',
-     'trans-huber-ar',
-    'trans-nll-ar',
+    #  'trans-huber-ar',
+    # 'trans-nll-ar',
 #    'trans-bvnll-ar',
 #    'trans-nll-atr',
 #    'trans-fnll-ar',
@@ -290,8 +290,7 @@ elif args.dataset_name == 'electricity':
     if args.epochs == -1: args.epochs = 50
     if args.N_input == -1: args.N_input = 336
     if args.N_output == -1: args.N_output = 168
-    #args.K_list = [12]
-    if args.K_list == []: args.K_list = []
+    
     if args.saved_models_dir is None:
         args.saved_models_dir = 'saved_models_electricity'
     if args.output_dir is None:
@@ -545,8 +544,7 @@ def run_inference_model(args, inf_model_name, base_models, which_split):
 
     inf_net = base_models[inf_model_name]
 
-    if not args.leak_agg_targets:
-        inf_test_targets_dict = None
+    
 
     inf_net.eval()
     outputs_dict, metrics_dict = eval_base_model(

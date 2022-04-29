@@ -137,12 +137,12 @@
 
 python main.py electricity \
 	--N_input 336 --N_output 168 \
-	--saved_models_dir saved_models/Mask/\
-	--output_dir Results/Mask/\
+	--saved_models_dir saved_models/Incasting/\
+	--output_dir Results/Incasting/without_masking\
 	--nhead 4\
 	--mask 1\
 	--device cuda:0\
-	--message With_imputation_agmtn\
+	--message Incasting\
 	--options train test dev
 
 #python main.py foodinflation \
