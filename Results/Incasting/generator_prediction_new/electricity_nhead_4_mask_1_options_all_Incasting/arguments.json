@@ -1,0 +1,14 @@
+{
+        "saved_dir": "./saved_models/Incasting/electricity_nhead_4_mask_1_options_all_Incasting",
+        "batch_size": 128,
+        "hidden_size": 256,
+        "mask": 1,
+        "nhead": 4,
+        "options": [
+                "train",
+                "test",
+                "dev"
+        ],
+        "epoch": 50,
+        "message": "Incasting"
+}

@@ -103,11 +103,11 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     )
 
 
-    # test_data = np.load(os.path.join(DATA_DIRS,"Outliers","Outlier","test_data.npy"))
-    # test_l = len(test_data)
+    test_data = np.load(os.path.join(DATA_DIRS,"Outliers","Outlier","data","new_masked.npy"))
+    test_l = len(test_data)
     data = df[['nat_demand']].to_numpy().T
     data_inj = df_inject[['nat_demand']].to_numpy().T
-    data_mask = df_mask[['label']].to_numpy().T
+    data_mask = df_inject[['label']].to_numpy().T
     
     # data_inj = data
     #n = data.shape[1]
@@ -115,7 +115,6 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     data = data[:, :n]
     data_inj = data_inj[:, :n]
     data_mask = data_mask[:, :n]
-    # data_inj[...,-test_l:] = test_data 
     df = df.iloc[:n]
 
     # set_trace()
@@ -124,7 +123,10 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     test_len = int(0.2*units) * N_output
     train_len = n - dev_len - test_len
 
-    #import ipdb ; ipdb.set_trace()
+    ### generated masking
+    data_mask[...,train_len+dev_len-N_output:-N_output] = test_data 
+    
+    # import pdb ; pdb.set_trace()
 
     cal_date = pd.to_datetime(df['datetime'])
     if t2v_type is None:
@@ -172,18 +174,24 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     for i in range(data.shape[0]):
         for j in range(train_len+dev_len+N_output, n+1, N_output):
             if j <= n:
-                for k in range(0,N_input-25,25):
-                    data_inj_test.append(torch.tensor(data_inj[i,:j]))
-                    mask = torch.zeros_like(data_mask[i,:j])
+                data_inj_test.append(torch.tensor(data_inj[i,:j]))
+                # mask = torch.zeros_like(data_mask[i,:j])
+                data_mask_test.append(torch.tensor(data_mask[i,:j]))
+                data_test.append(torch.tensor(data[i, :j]))
+                feats_test.append(torch.tensor(feats[i, :j]))
+                test_tsid_map.append(torch.tensor(i))
+                # for k in range(0,N_input-25,25):
+                #     data_inj_test.append(torch.tensor(data_inj[i,:j]))
+                #     mask = torch.zeros_like(data_mask[i,:j])
                     
-                    start = j-seq_len+N_input
-                    # print(start+k,start+k+50)
-                    # mask[start+k:start+k+50]=1
-                    data_mask_test.append(mask)
-                    # set_trace()
-                    data_test.append(torch.tensor(data[i, :j]))
-                    feats_test.append(torch.tensor(feats[i, :j]))
-                    test_tsid_map.append(torch.tensor(i))
+                #     start = j-seq_len+N_input
+                #     # print(start+k,start+k+50)
+                #     mask[start+k:start+k+50]=1
+                #     data_mask_test.append(mask)
+                #     # set_trace()
+                #     data_test.append(torch.tensor(data[i, :j]))
+                #     feats_test.append(torch.tensor(feats[i, :j]))
+                #     test_tsid_map.append(torch.tensor(i))
     
     data_train = get_list_of_dict_format(data_train,data_inj_train,data_mask_train)
     data_dev = get_list_of_dict_format(data_dev,data_inj_dev,data_mask_dev)
