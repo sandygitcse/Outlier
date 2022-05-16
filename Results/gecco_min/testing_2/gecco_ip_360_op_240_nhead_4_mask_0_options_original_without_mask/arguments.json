@@ -1,0 +1,10 @@
+{
+        "saved_dir": "./saved_models/gecco_min/testing_2/gecco_ip_360_op_240_nhead_4_mask_0_options_original_without_mask",
+        "batch_size": 128,
+        "hidden_size": 128,
+        "mask": 0,
+        "nhead": 4,
+        "options": [],
+        "epoch": 50,
+        "message": "without_mask"
+}

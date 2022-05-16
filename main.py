@@ -159,7 +159,7 @@ args.base_model_names = [
 #    'rnn-mse-ar',
 #    'rnn-nll-ar',
    'trans-mse-ar',
-     'trans-huber-ar',
+#      'trans-huber-ar',
     'trans-nll-ar',
 #    'trans-bvnll-ar',
 #    'trans-nll-atr',
@@ -183,10 +183,9 @@ if args.dataset_name in ['ECG5000']:
 
 #import ipdb ; ipdb.set_trace()
 if args.dataset_name == 'ett':
-    if args.epochs == -1: args.epochs = 20
+    if args.epochs == -1: args.epochs = 1
     if args.N_input == -1: args.N_input = 192
     if args.N_output == -1: args.N_output = 192
-    if args.K_list == []: args.K_list = []
     #args.K_list = [6]
     if args.saved_models_dir is None:
         args.saved_models_dir = 'saved_models_ett_d192_b24_e192_corrshuffle_bs128_seplayers_nodeczeros_nodecconv_t2v_usefeats_t2vglobal_idx_val20'
@@ -228,7 +227,6 @@ elif args.dataset_name == 'etthourly':
     if args.N_input == -1: args.N_input = 168
     if args.N_output == -1: args.N_output = 168
     #args.K_list = [12]
-    if args.K_list == []: args.K_list = []
     if args.saved_models_dir is None:
         args.saved_models_dir = 'saved_models_etthourly_noextrafeats_d168_b24_pefix_e168_val20_corrshuffle_seplayers_nodeczeros_nodecconv_t2v'
     if args.output_dir is None:
@@ -243,6 +241,48 @@ elif args.dataset_name == 'etthourly':
     if args.use_feats == -1: args.use_feats = 1
     #args.print_every = 5 # TODO: Only for aggregate models
     if args.device is None: args.device = 'cuda:2'
+
+elif args.dataset_name == 'gecco':
+    if args.epochs == -1: args.epochs = 50
+    if args.N_input == -1: args.N_input = 360
+    if args.N_output == -1: args.N_output = 360
+    #args.K_list = [12]
+    if args.saved_models_dir is None:
+        args.saved_models_dir = 'saved_models_etthourly_noextrafeats_d168_b24_pefix_e168_val20_corrshuffle_seplayers_nodeczeros_nodecconv_t2v'
+    if args.output_dir is None:
+        args.output_dir = 'Outputs_etthourly_noextrafeats_d168_klnorm_b24_pefix_e168_val20_corrshuffle_seplayers_nodeczeros_nodecconv_t2v'
+    if args.normalize is None: args.normalize = 'zscore_per_series'
+    if args.learning_rate == -1.: args.learning_rate = 0.0001
+    if args.batch_size == -1: args.batch_size = 128
+    if args.hidden_size == -1: args.hidden_size = 256
+    if args.num_grulstm_layers == -1: args.num_grulstm_layers = 1
+    if args.v_dim == -1: args.v_dim = 4
+    if args.b == -1: args.b = 24
+    if args.use_feats == -1: args.use_feats = 1
+    #args.print_every = 5 # TODO: Only for aggregate models
+    if args.device is None: args.device = 'cuda:0'
+
+
+elif args.dataset_name == 'energy':
+    if args.epochs == -1: args.epochs = 50
+    if args.N_input == -1: args.N_input = 360
+    if args.N_output == -1: args.N_output = 360
+    #args.K_list = [12]
+    if args.saved_models_dir is None:
+        args.saved_models_dir = 'saved_models_etthourly_noextrafeats_d168_b24_pefix_e168_val20_corrshuffle_seplayers_nodeczeros_nodecconv_t2v'
+    if args.output_dir is None:
+        args.output_dir = 'Outputs_etthourly_noextrafeats_d168_klnorm_b24_pefix_e168_val20_corrshuffle_seplayers_nodeczeros_nodecconv_t2v'
+    if args.normalize is None: args.normalize = 'zscore_per_series'
+    if args.learning_rate == -1.: args.learning_rate = 0.0001
+    if args.batch_size == -1: args.batch_size = 128
+    if args.hidden_size == -1: args.hidden_size = 128
+    if args.num_grulstm_layers == -1: args.num_grulstm_layers = 1
+    if args.v_dim == -1: args.v_dim = 4
+    if args.b == -1: args.b = 24
+    if args.use_feats == -1: args.use_feats = 1
+    #args.print_every = 5 # TODO: Only for aggregate models
+    if args.device is None: args.device = 'cuda:0'
+
 
 elif args.dataset_name == 'azure':
     if args.epochs == -1: args.epochs = 20
@@ -304,6 +344,28 @@ elif args.dataset_name == 'electricity':
     if args.b == -1: args.b = 4
     if args.use_feats == -1: args.use_feats = 1
     if args.device is None: args.device = 'cuda:1'
+
+
+elif args.dataset_name == 'smd':
+    if args.epochs == -1: args.epochs = 50
+    if args.N_input == -1: args.N_input = 336
+    if args.N_output == -1: args.N_output = 168
+    #args.K_list = [12]
+    # if args.K_list == []: args.K_list = []
+    if args.saved_models_dir is None:
+        args.saved_models_dir = 'saved_models_smd'
+    if args.output_dir is None:
+        args.output_dir = 'Outputs_smd'
+    if args.normalize is None: args.normalize = 'zscore_per_series'
+    if args.learning_rate == -1: args.learning_rate = 0.0001
+    if args.batch_size == -1: args.batch_size = 128
+    if args.hidden_size == -1: args.hidden_size = 64
+    if args.num_grulstm_layers == -1: args.num_grulstm_layers = 1
+    if args.v_dim == -1: args.v_dim = 4
+    if args.b == -1: args.b = 4
+    if args.use_feats == -1: args.use_feats = 1
+    if args.device is None: args.device = 'cuda:1'
+
 
 elif args.dataset_name == 'aggtest':
     if args.epochs == -1: args.epochs = 1
@@ -427,7 +489,7 @@ if "test" in args.options:
 if len(args.options)==3:
     op = "all"
 
-filen = f"electricity_nhead_{args.nhead}_mask_{args.mask}_options_{op}_{args.message}"
+filen = f"{args.dataset_name}_ip_{args.N_input}_op_{args.N_output}_nhead_{args.nhead}_mask_{args.mask}_options_{op}_{args.message}"
 args.output_dir = os.path.join(DUMP_PATH, args.output_dir,filen)
 args.saved_models_dir = os.path.join(DUMP_PATH, args.saved_models_dir,filen)
 os.makedirs(args.output_dir, exist_ok=True)
@@ -440,6 +502,7 @@ dict_args['mask']=args.mask
 dict_args['nhead']=args.nhead
 dict_args['options']=args.options
 dict_args['epoch']=args.epochs
+dict_args['lr']=args.learning_rate
 dict_args['message'] = args.message
 json_obj = json.dumps(dict_args,indent=8)
 with open(args.output_dir+"/arguments.json",'w+') as files:

@@ -1,0 +1,10 @@
+{
+        "saved_dir": "./saved_models/ett_testing/test1_model/ett_ip_384_op_192_nhead_4_mask_0_options_original_without_mask",
+        "batch_size": 64,
+        "hidden_size": 128,
+        "mask": 0,
+        "nhead": 4,
+        "options": [],
+        "epoch": 1,
+        "message": "without_mask"
+}

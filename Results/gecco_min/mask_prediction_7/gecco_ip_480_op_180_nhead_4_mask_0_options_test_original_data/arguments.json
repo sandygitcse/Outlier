@@ -1,0 +1,13 @@
+{
+        "saved_dir": "./saved_models/gecco_min/mask_prediction_7/gecco_ip_480_op_180_nhead_4_mask_0_options_test_original_data",
+        "batch_size": 128,
+        "hidden_size": 256,
+        "mask": 0,
+        "nhead": 4,
+        "options": [
+                "test"
+        ],
+        "epoch": 50,
+        "lr": 0.0001,
+        "message": "original_data"
+}

@@ -14,7 +14,7 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 import time,random
 from pdb import set_trace
 from data.synthetic_dataset import create_synthetic_dataset, create_sin_dataset, SyntheticDataset
-from data.real_dataset import parse_electricity
+from data.real_dataset import parse_electricity,parse_smd,parse_ett,parse_etthourly,parse_gecco,parse_energy_data
 torch.backends.cudnn.deterministic = True
 
 to_float_tensor = lambda x: torch.FloatTensor(x.copy())
@@ -528,7 +528,7 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         print(which_split, 'total time:', et-st)
 
         #if self.K>1 and which_split in ['dev']:
-        #    import ipdb ; ipdb.set_trace()
+        # set_trace()
 
         if self.input_norm is None:
             assert norm_type is not None
@@ -645,14 +645,10 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         if self.which_split in self.options:
             ex_input = self.data[ts_id]['target_inj'][ pos_id : pos_id+el ]        
             ex_mask = self.data[ts_id]['target_mask'][ pos_id : pos_id+el ] 
-        # for ind,val in enumerate(ex_mask):
-        #     if val == 1:
-        #         ex_input[ind]=mvalue
-        # print("before",self.data[ts_id]['target_inj'][ pos_id : pos_id+el ])
-
-        ex_input[ex_mask==1]=mvalue
-        # print(ex_mask,ex_input,pos_id,ts_id)
-        # print('after', ex_input.shape, ex_target.shape, ts_id, pos_id)
+            ex_input[ex_mask==1]=mvalue
+            
+      
+        
         
         if self.tsid_map is None:
             mapped_id = ts_id
@@ -764,6 +760,38 @@ class DataProcessor(object):
                 feats_info
             ) = parse_electricity(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
         
+        if args.dataset_name in ['energy']:
+            (
+                data_train, data_dev, data_test,
+                dev_tsid_map, test_tsid_map,
+                feats_info
+            ) = parse_energy_data(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
+        
+        elif args.dataset_name in ['smd']:
+            (
+                data_train, data_dev, data_test,
+                dev_tsid_map, test_tsid_map,
+                feats_info
+            ) = parse_smd(args.dataset_name, args.N_input, args.N_output)
+        elif args.dataset_name in ['gecco']:
+            (
+                data_train, data_dev, data_test,
+                dev_tsid_map, test_tsid_map,
+                feats_info
+            ) = parse_gecco(args.dataset_name, args.N_input, args.N_output)
+        elif args.dataset_name in ['ett']:
+            (
+                data_train, data_dev, data_test,
+                dev_tsid_map, test_tsid_map,
+                feats_info
+            ) = parse_ett(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
+        elif args.dataset_name in ['etthourly']:
+            (
+                data_train, data_dev, data_test,
+                dev_tsid_map, test_tsid_map,
+                feats_info
+            ) = parse_etthourly(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
+ 
         if args.use_feats:
             assert 'feats' in data_train[0].keys()
 

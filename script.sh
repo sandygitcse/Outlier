@@ -114,12 +114,13 @@
 #	--output_dir aaai_Outputs_taxi30min_e336_d168 \
 #	--device cuda:2
 
-#python main.py ett \
-#	--N_input 384 --N_output 192 \
-#	--saved_models_dir aaai_saved_models_ett_e384_d192_chunkfix_3_lr1e5_prunelastday_rp \
-#	--output_dir aaai_Outputs_ett_e384_d192_chunkfix_3_lr1e5_prunelastday_rp \
-#	--K_list 1 4 6 12 \
-#	--device cuda:2
+# python main.py ett \
+# 	--N_input 384 --N_output 192 \
+# 	--saved_models_dir saved_models/ett_testing/test1_model \
+# 	--output_dir Results/ett_testing/test_1_results \
+# 	--device cuda:0\
+# 	--message without_mask
+# 	# --options train test dev
 
 #python main.py Solar \
 #	--N_input 336 --N_output 168 \
@@ -128,22 +129,60 @@
 #	--K_list 1 2 6 12 \
 #	--device cuda:2
 
-#python main.py etthourly \
-#	--N_input 168 --N_output 168 \
-#	--saved_models_dir aaai_saved_models_etthourly_e168_d168_9_lr1e5_prunelastday_rp \
-#	--output_dir aaai_Outputs_etthourly_e168_d168_9_lr1e5_prunelastday_rp \
-#	--K_list 1 2 6 \
-#	--device cuda:1
+# python main.py etthourly \
+# 	--N_input 720 --N_output 168 \
+# 	--saved_models_dir saved_models/ett_hourly/testing_3 \
+# 	--output_dir Results/ett_hourly/testing_3 \
+# 	--device cuda:0\
+# 	--message without_mask
+# 	# --options train test dev
 
-python main.py electricity \
-	--N_input 336 --N_output 168 \
-	--saved_models_dir saved_models/Incasting_final/\
-	--output_dir Results/Incasting/generator_prediction_final\
-	--nhead 4\
-	--mask 1\
-	--device cuda:0\
-	--message Incasting_new\
-	--options train test dev
+python main.py gecco \
+	--N_input 480 --N_output 180 \
+	--saved_models_dir saved_models/gecco_min/mask_prediction_7\
+	--output_dir Results/gecco_min/mask_prediction_7 \
+	--device cuda:1\
+	--epochs 50 \
+	--mask 0\
+	--message original_data\
+	--options test
+
+
+# python main.py energy \
+# 	--N_input 336 --N_output 168 \
+# 	--saved_models_dir saved_models/energy/testing_2 \
+# 	--output_dir Results/energy/testing_2 \
+# 	--device cuda:1\
+# 	--epochs 50 \
+# 	--mask 0\
+# 	--message 50_epoch \
+# 	--options train test dev
+
+
+
+# python main.py electricity \
+# 	--N_input 336 --N_output 168 \
+# 	--saved_models_dir saved_models/Incasting_final/\
+# 	--output_dir Results/Incasting/generator_prediction_final\
+# 	--nhead 4\
+# 	--mask 1\
+# 	--device cuda:0\
+# 	--message Incasting_new\
+# 	--options train test dev
+
+
+
+# python main.py smd \
+# 	--N_input 200 --N_output 50 \
+# 	--saved_models_dir saved_models/forecasting__smd/\
+# 	--output_dir Results/forcasting_smd\
+# 	--nhead 1\
+# 	--mask 0\
+# 	--device cuda:0\
+# 	--message 200_50_head_1_2_data_hidden_size_64\
+# 	--options train dev test
+
+
 
 #python main.py foodinflation \
 #	--N_input 90 --N_output 30 \
