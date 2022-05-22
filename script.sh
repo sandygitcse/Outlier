@@ -137,38 +137,38 @@
 # 	--message without_mask
 # 	# --options train test dev
 
-python main.py gecco \
-	--N_input 480 --N_output 180 \
-	--saved_models_dir saved_models/gecco_min/mask_prediction_7\
-	--output_dir Results/gecco_min/mask_prediction_7 \
+# python main.py gecco \
+# 	--N_input 480 --N_output 180 \
+# 	--saved_models_dir saved_models/gecco_min/mask_prediction_8\
+# 	--output_dir Results/gecco_min/mask_prediction_8 \
+# 	--device cuda:1\
+# 	--epochs 50 \
+# 	--mask 1\
+# 	--message mask_data\
+# 	--options train dev test
+
+
+python main.py energy \
+	--N_input 336 --N_output 168 \
+	--saved_models_dir saved_models/energy/testing_inj_1 \
+	--output_dir Results/energy/testing_inj_1 \
 	--device cuda:1\
 	--epochs 50 \
 	--mask 0\
-	--message original_data\
-	--options test
-
-
-# python main.py energy \
-# 	--N_input 336 --N_output 168 \
-# 	--saved_models_dir saved_models/energy/testing_2 \
-# 	--output_dir Results/energy/testing_2 \
-# 	--device cuda:1\
-# 	--epochs 50 \
-# 	--mask 0\
-# 	--message 50_epoch \
-# 	--options train test dev
+	--message injected_Unmasked 
+	# --options train test dev
 
 
 
 # python main.py electricity \
 # 	--N_input 336 --N_output 168 \
-# 	--saved_models_dir saved_models/Incasting_final/\
-# 	--output_dir Results/Incasting/generator_prediction_final\
+# 	--saved_models_dir saved_models/amplitude \
+# 	--output_dir Results/amplitude \
 # 	--nhead 4\
-# 	--mask 1\
-# 	--device cuda:0\
-# 	--message Incasting_new\
-# 	--options train test dev
+# 	--mask 0\
+# 	--device cuda:1\
+# 	--message amp 
+# 	# --options train test dev
 
 
 

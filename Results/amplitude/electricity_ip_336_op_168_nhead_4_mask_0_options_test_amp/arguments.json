@@ -1,0 +1,13 @@
+{
+        "saved_dir": "./saved_models/amplitude/electricity_ip_336_op_168_nhead_4_mask_0_options_test_amp",
+        "batch_size": 128,
+        "hidden_size": 256,
+        "mask": 0,
+        "nhead": 4,
+        "options": [
+                "test"
+        ],
+        "epoch": 50,
+        "lr": 0.0001,
+        "message": "amp"
+}

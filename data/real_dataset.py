@@ -352,7 +352,7 @@ def parse_gecco(dataset_name, N_input, N_output, t2v_type=None):
     train_len = n - dev_len - test_len
 
     ### generated masking
-    # data_mask[...,-test_l-N_output:-N_output] = test_data 
+    data_mask[...,-test_l-N_output:-N_output] = test_data 
   
     # feats_cont = np.expand_dims(df[['HUFL','HULL','MUFL','MULL','LUFL','LULL']].to_numpy(), axis=0)
 
@@ -452,24 +452,30 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
 #    n = train_len + dev_len + test_len
 #    df = pd.read_csv('../Informer2020/data/ETT/ETTh1.csv').iloc[:n]
 
-    df = pd.read_csv(DATA_DIRS+'data/energy-anomaly-detection/train.csv')
+    # df = pd.read_csv(DATA_DIRS+'data/energy-anomaly-detection/train.csv')
     
-    df = df[df['building_id']==966].interpolate(limit_direction='both',method='linear')
-    data = df[['meter_reading']].to_numpy().T
-    # set_trace()
+    # df = df[df['building_id']==966].interpolate(limit_direction='both',method='linear')
+    # data = df[['meter_reading']].to_numpy().T
+    # # set_trace()
+    # data_mask = df[['anomaly']].to_numpy().T
+
+    df = pd.read_csv(DATA_DIRS+'data/energy-anomaly-detection/energy_injected_5.csv')
+    data = df[['meter_reading']].to_numpy().T 
     data_mask = df[['anomaly']].to_numpy().T
+
+
     #data = np.expand_dims(data, axis=-1)
-    # test_data = np.load(os.path.join(DATA_DIRS,"data","water_quality","gecco_test_mask.npy"))
-    # test_l = len(test_data)
+    test_data = np.load(os.path.join(DATA_DIRS,"data","energy-anomaly-detection","energy_inj_mask.npy"))
+    test_l = len(test_data)
     # data_mask = np.zeros_like(data,dtype=float)
     n = data.shape[1]
     units = n//N_output
     dev_len = int(0.2*units) * N_output
     test_len = int(0.2*units) * N_output
     train_len = n - dev_len - test_len
-
+    # set_trace()
     ### generated masking
-    # data_mask[...,-test_l-N_output:-N_output] = test_data 
+    data_mask[...,-test_l-N_output:-N_output] = test_data 
   
     # feats_cont = np.expand_dims(df[['HUFL','HULL','MUFL','MULL','LUFL','LULL']].to_numpy(), axis=0)
 
@@ -682,11 +688,11 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
         os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'continuous_dataset.csv')
     )
     df_inject   = pd.read_csv(
-        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', '2_percent_electricity.csv')
+        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'elect_2_percent_amplitude.csv')
     )
-    df_mask   = pd.read_csv(
-        os.path.join('.', 'data', 'masked_reduced.csv')
-    )
+    # df_mask   = pd.read_csv(
+    #     os.path.join('.', 'data', 'masked_reduced.csv')
+    # )
 
 
     test_data = np.load(os.path.join(DATA_DIRS,"Outliers","Outlier","data","new_masked.npy"))
@@ -710,7 +716,7 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     train_len = n - dev_len - test_len
 
     ### generated masking
-    data_mask[...,train_len+dev_len-N_output:-N_output] = test_data 
+    # data_mask[...,train_len+dev_len-N_output:-N_output] = test_data 
     
     # import pdb ; pdb.set_trace()
 
@@ -766,19 +772,7 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
                 data_test.append(torch.tensor(data[i, :j]))
                 feats_test.append(torch.tensor(feats[i, :j]))
                 test_tsid_map.append(torch.tensor(i))
-                # for k in range(0,N_input-25,25):
-                #     data_inj_test.append(torch.tensor(data_inj[i,:j]))
-                #     mask = torch.zeros_like(data_mask[i,:j])
-                    
-                #     start = j-seq_len+N_input
-                #     # print(start+k,start+k+50)
-                #     mask[start+k:start+k+50]=1
-                #     data_mask_test.append(mask)
-                #     # set_trace()
-                #     data_test.append(torch.tensor(data[i, :j]))
-                #     feats_test.append(torch.tensor(feats[i, :j]))
-                #     test_tsid_map.append(torch.tensor(i))
-    
+             
     data_train = get_list_of_dict_format(data_train,data_inj_train,data_mask_train)
     data_dev = get_list_of_dict_format(data_dev,data_inj_dev,data_mask_dev)
     data_test = get_list_of_dict_format(data_test,data_inj_test,data_mask_test)

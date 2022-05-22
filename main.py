@@ -159,7 +159,7 @@ args.base_model_names = [
 #    'rnn-mse-ar',
 #    'rnn-nll-ar',
    'trans-mse-ar',
-#      'trans-huber-ar',
+     'trans-huber-ar',
     'trans-nll-ar',
 #    'trans-bvnll-ar',
 #    'trans-nll-atr',
