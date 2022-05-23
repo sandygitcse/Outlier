@@ -20,7 +20,7 @@ import shutil
 import properscoring as ps
 import scipy.stats
 import itertools
-import GPUtil
+# import GPUtil
 
 from functools import partial
 torch.backends.cudnn.deterministic = True
@@ -139,7 +139,7 @@ args = parser.parse_args()
 
 #args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # Select the most free device by memory
-devices = GPUtil.getAvailable(order = 'memory', limit = 5, maxLoad = 0.8, maxMemory = 0.8, includeNan=False, excludeID=[], excludeUUID=[])
+# devices = GPUtil.getAvailable(order = 'memory', limit = 5, maxLoad = 0.8, maxMemory = 0.8, includeNan=False, excludeID=[], excludeUUID=[])
 # import ipdb; ipdb.set_trace()
 # args.device = torch.device(devices[0])
 
@@ -489,7 +489,7 @@ if "test" in args.options:
 if len(args.options)==3:
     op = "all"
 
-filen = f"{args.dataset_name}_ip_{args.N_input}_op_{args.N_output}_nhead_{args.nhead}_mask_{args.mask}_options_{op}_{args.message}"
+filen = f"{args.dataset_name}_ip_{args.N_input}_op_{args.N_output}_{args.message}"
 args.output_dir = os.path.join(DUMP_PATH, args.output_dir,filen)
 args.saved_models_dir = os.path.join(DUMP_PATH, args.saved_models_dir,filen)
 os.makedirs(args.output_dir, exist_ok=True)
@@ -498,7 +498,7 @@ dict_args = dict()
 dict_args['saved_dir']=args.saved_models_dir
 dict_args['batch_size']=args.batch_size
 dict_args['hidden_size']=args.hidden_size
-dict_args['mask']=args.mask
+# dict_args['mask']=args.mask
 dict_args['nhead']=args.nhead
 dict_args['options']=args.options
 dict_args['epoch']=args.epochs

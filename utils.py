@@ -502,8 +502,6 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         for i in range(0, len(data)):
             #print(i, len(data))
             ex = data[i]['target']
-            ex_i = data[i]['target_inj']
-            ex_m = data[i]['target_mask']
             ex_f = data[i]['feats']
             ex_len = len(ex)
             # ex = ex[ ex_len%self.K: ]
@@ -512,15 +510,11 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
             # ex_f = ex_f[ ex_len%self.K: ]
 
             ex_agg = ex
-            ex_i_agg = ex_i
-            ex_m_agg = ex_m
             ex_f_agg = ex_f
 
             data_agg.append(
                 {
                     'target':ex_agg,
-                    'target_inj':ex_i_agg,
-                    'target_mask':ex_m_agg,
                     'feats':ex_f_agg,
                 }
             )
@@ -534,7 +528,7 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
             assert norm_type is not None
             data_for_norm = []
             for i in range(0, len(data)):
-                ex = data_agg[i]['target_inj']
+                ex = data_agg[i]['target']
                 data_for_norm.append(torch.FloatTensor(ex))
             #data_for_norm = to_float_tensor(data_for_norm).squeeze(-1)
 
@@ -608,17 +602,7 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         #output_size = len(self.data[0]['target'][0])
         output_size = 1
         return output_size
-    def get_mask(self,ex_mask):
-        
-        ex_mask = torch.tensor(ex_mask,dtype=bool)
-        head1 = ex_mask * ex_mask.unsqueeze(-1)
-        head2 = torch.zeros_like(head1)==1
-        if self.nhead == 1:
-            return head1
-        
-        # ex_mask = torch.stack(tuple(head1.repeat(self.nhead,1)))
-        ex_mask = torch.stack((head1,head1,head1,head1))
-        return ex_mask
+   
     def __len__(self):
         return len(self.indices)
 
@@ -636,17 +620,16 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         # print(self.base_enc_len,self.base_dec_len,self.S)
         ex_input = self.data[ts_id]['target'][ pos_id : pos_id+el ]
         ex_target = self.data[ts_id]['target'][ pos_id+el : pos_id+el+dl ]
-        ex_mask = torch.zeros_like(ex_input)
+      
         # ex_target = self.data[ts_id]['target'][ pos_id : pos_id+el ]
 
         #### anomalies only in test data
         # set_trace()
         mvalue = ex_input.mean()
         if self.which_split in self.options:
-            ex_input = self.data[ts_id]['target_inj'][ pos_id : pos_id+el ]        
-            ex_mask = self.data[ts_id]['target_mask'][ pos_id : pos_id+el ] 
-            # ex_input[ex_mask==1]=mvalue
-            
+            ex_input = self.data[ts_id]['target'][ pos_id : pos_id+el ]        
+    
+           
       
         
         
@@ -690,17 +673,10 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         #print(ex_input.shape, ex_target.shape, ex_input_feats.shape, ex_target_feats.shape)
         # set_trace()
 
-        # attn_mask = torch.ones(self.base_enc_len,self.base_enc_len)
-        # ex_mask = attn_mask.masked_fill(ex_mask==1,value=-1e9)
-
-        ex_mask = self.get_mask(ex_mask)
-        # attn_mask = torch.ones(self.base_enc_len,self.base_enc_len)!=1.
-        # # print(ex_mask)
-        # ex_mask = attn_mask.masked_fill(ex_mask==True,value=True)
-
+    
         # set_trace()
         return (
-            ex_input, ex_target, ex_mask,
+            ex_input, ex_target,
             ex_input_feats, ex_target_feats,
             mapped_id,
             torch.FloatTensor([ts_id, pos_id])

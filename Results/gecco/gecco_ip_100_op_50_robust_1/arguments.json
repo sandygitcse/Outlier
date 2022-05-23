@@ -1,0 +1,10 @@
+{
+        "saved_dir": "./saved_models/gecco/gecco_ip_100_op_50_robust_1",
+        "batch_size": 128,
+        "hidden_size": 256,
+        "nhead": 4,
+        "options": [],
+        "epoch": 1,
+        "lr": 0.0001,
+        "message": "robust_1"
+}

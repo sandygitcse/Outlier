@@ -1,0 +1,10 @@
+{
+        "saved_dir": "./saved_models/window/electricity_ip_100_op_50_sliding",
+        "batch_size": 128,
+        "hidden_size": 256,
+        "nhead": 4,
+        "options": [],
+        "epoch": 50,
+        "lr": 0.0001,
+        "message": "sliding"
+}

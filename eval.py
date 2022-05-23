@@ -27,7 +27,7 @@ def eval_base_model(args, model_name, net, loader, norm, which_split, verbose=1)
     for i, data in enumerate(loader, 0):
         loss_mse, loss_dtw, loss_tdi, loss_mae, losses_nll, losses_ql = torch.tensor(0), torch.tensor(0), torch.tensor(0), torch.tensor(0), torch.tensor(0), torch.tensor(0)
         # get the inputs
-        batch_inputs, batch_target, mask, feats_in, feats_tgt, ids, _ = data
+        batch_inputs, batch_target,feats_in, feats_tgt, ids, _ = data
         
         # if args.initialization:
         #     batch_target = utils.get_inputs_median(batch_inputs, batch_target)
@@ -43,12 +43,10 @@ def eval_base_model(args, model_name, net, loader, norm, which_split, verbose=1)
         #    ipdb.set_trace()
         # DO NOT PASS TARGET during forward pass
         # import pdb ; pdb.set_trace()
-        if args.nhead >1:
-                mask = mask.transpose(1,0).reshape(-1,args.N_input,args.N_input)
         with torch.no_grad():
             out = net(
                 feats_in.to(args.device), batch_inputs.to(args.device), feats_tgt.to(args.device),
-                batch_target.to(args.device),mask=mask.to(args.device) if args.mask==1 else None
+                batch_target.to(args.device)
             )
             if net.is_signature:
                 if net.estimate_type in ['point']:

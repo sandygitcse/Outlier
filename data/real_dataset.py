@@ -12,8 +12,12 @@ import glob
 from ipdb import set_trace
 
 # DATA_DIRS = '/mnt/infonas/data/pratham/Forecasting/DILATE'
-DATA_DIRS = '/mnt/cat/data/sandy/Forecasting/'
+if "a99" in os.getcwd():
+    DATA_DIRS = '/mnt/a99/d0/sandy/Forecasting/'
+else:
+    DATA_DIRS = '/mnt/cat/data/sandy/Forecasting/'
 # DATA_DIRS = '.'
+
 def generate_train_dev_test_data(data, N_input):
     train_per = 0.6
     dev_per = 0.2
@@ -72,26 +76,63 @@ def get_date_range(start_string, freq, seq_len):
     return full_date_range
 
 
-def get_list_of_dict_format(data,inject,mask):
+def get_list_of_dict_format(data):
     data_new = list()
-    for entry,inj,m in zip(data,inject,mask):
+    for entry in data:
         entry_dict = dict()
         entry_dict['target'] = entry
-        entry_dict['target_inj']=inj
-        entry_dict['target_mask']=m
         data_new.append(entry_dict)
     return data_new
 
 def prune_dev_test_sequence(data, seq_len):
     for i in range(len(data)):
-        
         data[i]['target'] = data[i]['target'][-seq_len:]
-        data[i]['target_inj'] = data[i]['target_inj'][-seq_len:]
-        data[i]['target_mask'] = data[i]['target_mask'][-seq_len:]
         data[i]['feats'] = data[i]['feats'][-seq_len:]
     return data
 
 
+def decompose_seq(seq, decompose_type, period, N_output, is_train):
+    if is_train:
+        if decompose_type == 'seasonal':
+            components = seasonal_decompose(
+               seq, model='additive', period=period, extrapolate_trend=True
+            )
+            coeffs = torch.tensor(
+                [components.trend, components.seasonal, components.resid]
+            ).transpose(0,1)
+        elif decompose_type == 'STL':
+            stl_components = STL(seq, period=period).fit()
+            coeffs = torch.tensor(
+                [stl_components.trend, stl_components.seasonal, stl_components.resid]
+            ).transpose(0,1)
+        #coeffs = torch.log(coeffs)
+        coeffs = (coeffs - coeffs.mean(dim=-1, keepdims=True)) / coeffs.std(dim=-1, keepdims=True)
+    else:
+        seq_tr = seq[:-N_output]
+        seq_out = seq[-N_output:]
+        if decompose_type == 'seasonal':
+            components_tr = seasonal_decompose(
+               seq_tr, model='additive', period=period, extrapolate_trend=True
+            )
+            #components_out = seasonal_decompose(
+            #   seq_out, model='additive', period=period, extrapolate_trend=True
+            #)
+            coeffs_tr = torch.tensor([components_tr.trend, components_tr.seasonal, components_tr.resid]).transpose(0,1)
+            #coeffs_out = torch.tensor([components.trend, components.seasonal, components.resid]).transpose(0,1)
+        elif decompose_type == 'STL':
+            stl_tr = STL(seq_tr, period=period).fit()
+            #stl_out = STL(seq_out, period=period).fit()
+            coeffs_tr = torch.tensor([stl_tr.trend, stl_tr.seasonal, stl_tr.resid]).transpose(0,1)
+            #coeffs_out = torch.tensor([stl_out.trend, stl_out.seasonal, stl_out.resid]).transpose(0,1)
+
+        means = coeffs_tr.mean(dim=0, keepdims=True)
+        stds = coeffs_tr.std(dim=0, keepdims=True)
+        coeffs_tr = (coeffs_tr - means) / stds
+        coeffs_out = torch.zeros([seq_out.shape[0], coeffs_tr.shape[1]], dtype=torch.float)
+        coeffs = torch.cat([coeffs_tr, coeffs_out], dim=0)
+        #coeffs = torch.log(coeffs)
+
+    return coeffs
 
 
 def parse_ett(dataset_name, N_input, N_output, t2v_type=None):
@@ -342,8 +383,8 @@ def parse_gecco(dataset_name, N_input, N_output, t2v_type=None):
     df['EVENT'] = df['EVENT'].map({False:0, True: 1})
     data_mask = df[['EVENT']].to_numpy().T
     #data = np.expand_dims(data, axis=-1)
-    test_data = np.load(os.path.join(DATA_DIRS,"data","water_quality","gecco_test_mask.npy"))
-    test_l = len(test_data)
+    # test_data = np.load(os.path.join(DATA_DIRS,"data","water_quality","gecco_test_mask.npy"))
+    # test_l = len(test_data)
     # data_mask = np.zeros_like(data,dtype=float)
     n = data.shape[1]
     units = n//N_output
@@ -352,7 +393,7 @@ def parse_gecco(dataset_name, N_input, N_output, t2v_type=None):
     train_len = n - dev_len - test_len
 
     ### generated masking
-    data_mask[...,-test_l-N_output:-N_output] = test_data 
+    # data_mask[...,-test_l-N_output:-N_output] = test_data 
   
     # feats_cont = np.expand_dims(df[['HUFL','HULL','MUFL','MULL','LUFL','LULL']].to_numpy(), axis=0)
 
@@ -386,11 +427,11 @@ def parse_gecco(dataset_name, N_input, N_output, t2v_type=None):
 
     data = torch.tensor(data, dtype=torch.float)
     feats = torch.tensor(feats, dtype=torch.float)
-    data_mask = torch.tensor(data_mask, dtype=torch.float)
+    # data_mask = torch.tensor(data_mask, dtype=torch.float)
 
     data_train = data[:, :train_len]
     feats_train = feats[:, :train_len]
-    data_mask_train = data_mask[:, :train_len]
+    # data_mask_train = data_mask[:, :train_len]
     data_dev, data_test,data_inj_dev,data_inj_test,data_mask_dev,data_mask_test = [], [],[],[],[],[]
 
     data_dev, data_test = [], []
@@ -400,21 +441,21 @@ def parse_gecco(dataset_name, N_input, N_output, t2v_type=None):
         for j in range(train_len+N_output, train_len+dev_len+1, N_output):
             if j <= n:
                 data_dev.append(data[i, :j])
-                data_mask_dev.append(data_mask[i,:j])
+                # data_mask_dev.append(data_mask[i,:j])
                 feats_dev.append(feats[i, :j])
                 dev_tsid_map.append(i)
     for i in range(data.shape[0]):
-        for j in range(train_len+dev_len+N_output, n+1, N_output):
+        for j in range(train_len+dev_len+N_output-480, n+1, N_output):
             if j <= n:
                 # print(i,j,n)
                 data_test.append(data[i, :j])
-                data_mask_test.append(data_mask[i,:j])
+                # data_mask_test.append(data_mask[i,:j])
                 feats_test.append(feats[i, :j])
                 test_tsid_map.append(i)
 
-    data_train = get_list_of_dict_format(data_train,data_train,data_mask_train)
-    data_dev = get_list_of_dict_format(data_dev,data_dev,data_mask_dev)
-    data_test = get_list_of_dict_format(data_test,data_test,data_mask_test)
+    data_train = get_list_of_dict_format(data_train)
+    data_dev = get_list_of_dict_format(data_dev)
+    data_test = get_list_of_dict_format(data_test)
 
 
     decompose_type = 'STL'
@@ -682,43 +723,24 @@ def parse_smd(dataset_name, N_input, N_output, t2v_type=None):
 
 
 def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
-    from pdb import set_trace
     #df = pd.read_csv('data/electricity_load_forecasting_panama/continuous_dataset.csv')
     df = pd.read_csv(
-        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'continuous_dataset.csv')
+        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', '2_percent_electricity.csv')
     )
-    df_inject   = pd.read_csv(
-        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'elect_2_percent_amplitude.csv')
-    )
-    # df_mask   = pd.read_csv(
-    #     os.path.join('.', 'data', 'masked_reduced.csv')
-    # )
-
-
-    test_data = np.load(os.path.join(DATA_DIRS,"Outliers","Outlier","data","new_masked.npy"))
-    test_l = len(test_data)
     data = df[['nat_demand']].to_numpy().T
-    data_inj = df_inject[['nat_demand']].to_numpy().T
-    data_mask = df_inject[['label']].to_numpy().T
-    
-    # data_inj = data
+
     #n = data.shape[1]
     n = (1903 + 1) * 24 # Select first n=1904*24 entries because of non-stationarity in the data after first n values
     data = data[:, :n]
-    data_inj = data_inj[:, :n]
-    data_mask = data_mask[:, :n]
     df = df.iloc[:n]
 
-    # set_trace()
+
     units = n//N_output
     dev_len = int(0.2*units) * N_output
     test_len = int(0.2*units) * N_output
     train_len = n - dev_len - test_len
 
-    ### generated masking
-    # data_mask[...,train_len+dev_len-N_output:-N_output] = test_data 
-    
-    # import pdb ; pdb.set_trace()
+    #import ipdb ; ipdb.set_trace()
 
     cal_date = pd.to_datetime(df['datetime'])
     if t2v_type is None:
@@ -742,40 +764,32 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     feats = np.concatenate([feats_hod, feats_date], axis=-1)
 
     data = torch.tensor(data, dtype=torch.float)
-    data_inj = torch.tensor(data_inj, dtype=torch.float)
-    data_mask = torch.tensor(data_mask, dtype=torch.float)
     feats = torch.tensor(feats, dtype=torch.float)
 
     data_train = data[:, :train_len]
-    data_inj_train = data_inj[:, :train_len]
-    data_mask_train = data_mask[:, :train_len]
     feats_train = feats[:, :train_len]
 
-    data_dev, data_test,data_inj_dev,data_inj_test,data_mask_dev,data_mask_test = [], [],[],[],[],[]
+    data_dev, data_test = [], []
     feats_dev, feats_test = [], []
     dev_tsid_map, test_tsid_map = [], []
-    seq_len = 2*N_input+N_output  #(336*2 + 168 = 840)
+    
+    seq_len = 2*N_input+N_output
     for i in range(data.shape[0]):
         for j in range(train_len+N_output, train_len+dev_len+1, N_output):
             if j <= n:
-                data_inj_dev.append(data_inj[i,:j])
-                data_mask_dev.append(data_mask[i,:j])
                 data_dev.append(data[i, :j])
                 feats_dev.append(feats[i, :j])
                 dev_tsid_map.append(i)
     for i in range(data.shape[0]):
-        for j in range(train_len+dev_len+N_output, n+1, N_output):
+        for j in range(train_len+dev_len-336+N_output, n+1, N_output):
             if j <= n:
-                data_inj_test.append(torch.tensor(data_inj[i,:j]))
-                # mask = torch.zeros_like(data_mask[i,:j])
-                data_mask_test.append(torch.tensor(data_mask[i,:j]))
-                data_test.append(torch.tensor(data[i, :j]))
-                feats_test.append(torch.tensor(feats[i, :j]))
-                test_tsid_map.append(torch.tensor(i))
-             
-    data_train = get_list_of_dict_format(data_train,data_inj_train,data_mask_train)
-    data_dev = get_list_of_dict_format(data_dev,data_inj_dev,data_mask_dev)
-    data_test = get_list_of_dict_format(data_test,data_inj_test,data_mask_test)
+                data_test.append(data[i, :j])
+                feats_test.append(feats[i, :j])
+                test_tsid_map.append(i)
+
+    data_train = get_list_of_dict_format(data_train)
+    data_dev = get_list_of_dict_format(data_dev)
+    data_test = get_list_of_dict_format(data_test)
 
     for i in range(len(data_train)):
         data_train[i]['feats'] = feats_train[i]
@@ -783,15 +797,17 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
         data_dev[i]['feats'] = feats_dev[i]
     for i in range(len(data_test)):
         data_test[i]['feats'] = feats_test[i]
+
     feats_info = {0:(24, 16)}
     i = len(feats_info)
     for j in range(i, data_train[0]['feats'].shape[-1]):
         feats_info[j] = (-1, -1)
 
-    
-    data_dev = prune_dev_test_sequence(data_dev, seq_len) #54 * 840
+    seq_len = 2*N_input+N_output
+    data_dev = prune_dev_test_sequence(data_dev, seq_len)
     data_test = prune_dev_test_sequence(data_test, seq_len)
-    # set_trace()
+
     return (
         data_train, data_dev, data_test, dev_tsid_map, test_tsid_map, feats_info
     )
+

@@ -91,9 +91,9 @@ def train_model(
         epoch_loss, epoch_time = 0., 0.
         for i, data in enumerate(trainloader, 0):
             st = time.time()
-            inputs, target,mask, feats_in, feats_tgt, _, _ = data
+            inputs, target, feats_in, feats_tgt, _, _ = data
             target = target.to(args.device)
-            mask = mask.to(args.device)
+           
             batch_size, N_output = target.shape[0:2]
 
             #import ipdb ; ipdb.set_trace()
@@ -108,14 +108,12 @@ def train_model(
             else:
                 teacher_force = False
 
-            if args.nhead >1:
-                mask = mask.transpose(1,0).reshape(-1,N_input,N_input)
             # import pdb;pdb.set_trace()
             
             out = net(
                 feats_in.to(args.device), inputs.to(args.device),
                 feats_tgt.to(args.device), target.to(args.device),
-                teacher_force=teacher_force,mask=mask.to(args.device) if args.mask==1 else None
+                teacher_force=teacher_force
             )
             if net.is_signature:
                 if net.estimate_type in ['point']:
