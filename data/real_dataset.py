@@ -506,8 +506,8 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
 
 
     #data = np.expand_dims(data, axis=-1)
-    test_data = np.load(os.path.join(DATA_DIRS,"data","energy-anomaly-detection","energy_inj_mask.npy"))
-    test_l = len(test_data)
+    # test_data = np.load(os.path.join(DATA_DIRS,"data","energy-anomaly-detection","energy_inj_mask.npy"))
+    # test_l = len(test_data)
     # data_mask = np.zeros_like(data,dtype=float)
     n = data.shape[1]
     units = n//N_output
@@ -516,7 +516,7 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
     train_len = n - dev_len - test_len
     # set_trace()
     ### generated masking
-    data_mask[...,-test_l-N_output:-N_output] = test_data 
+    # data_mask[...,-test_l-N_output:-N_output] = test_data 
   
     # feats_cont = np.expand_dims(df[['HUFL','HULL','MUFL','MULL','LUFL','LULL']].to_numpy(), axis=0)
 
@@ -549,11 +549,11 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
 
     data = torch.tensor(data, dtype=torch.float)
     feats = torch.tensor(feats, dtype=torch.float)
-    data_mask = torch.tensor(data_mask, dtype=torch.float)
+    # data_mask = torch.tensor(data_mask, dtype=torch.float)
 
     data_train = data[:, :train_len]
     feats_train = feats[:, :train_len]
-    data_mask_train = data_mask[:, :train_len]
+    # data_mask_train = data_mask[:, :train_len]
     data_dev, data_test,data_inj_dev,data_inj_test,data_mask_dev,data_mask_test = [], [],[],[],[],[]
 
     data_dev, data_test = [], []
@@ -563,21 +563,21 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
         for j in range(train_len+N_output, train_len+dev_len+1, N_output):
             if j <= n:
                 data_dev.append(data[i, :j])
-                data_mask_dev.append(data_mask[i,:j])
+                # data_mask_dev.append(data_mask[i,:j])
                 feats_dev.append(feats[i, :j])
                 dev_tsid_map.append(i)
     for i in range(data.shape[0]):
-        for j in range(train_len+dev_len+N_output, n+1, N_output):
+        for j in range(train_len+dev_len-336+N_output, n+1, N_output):
             if j <= n:
                 # print(i,j,n)
                 data_test.append(data[i, :j])
-                data_mask_test.append(data_mask[i,:j])
+                # data_mask_test.append(data_mask[i,:j])
                 feats_test.append(feats[i, :j])
                 test_tsid_map.append(i)
 
-    data_train = get_list_of_dict_format(data_train,data_train,data_mask_train)
-    data_dev = get_list_of_dict_format(data_dev,data_dev,data_mask_dev)
-    data_test = get_list_of_dict_format(data_test,data_test,data_mask_test)
+    data_train = get_list_of_dict_format(data_train)
+    data_dev = get_list_of_dict_format(data_dev)
+    data_test = get_list_of_dict_format(data_test)
 
 
     decompose_type = 'STL'

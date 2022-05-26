@@ -137,25 +137,23 @@
 # 	--message without_mask
 # 	# --options train test dev
 
-python main.py gecco \
+# python main.py gecco \
+# 	--N_input 100 --N_output 50 \
+# 	--saved_models_dir saved_models/gecco \
+# 	--output_dir Results/gecco/ \
+# 	--device cuda:3\
+# 	--epochs 1 \
+# 	--message robust_1
+# 	# --options train dev test
+
+
+python main.py energy \
 	--N_input 100 --N_output 50 \
-	--saved_models_dir saved_models/gecco \
-	--output_dir Results/gecco/ \
+	--saved_models_dir saved_models/energy/ \
+	--output_dir Results/energy/ \
 	--device cuda:3\
-	--epochs 1 \
-	--message robust_1
-	# --options train dev test
-
-
-# python main.py energy \
-# 	--N_input 336 --N_output 168 \
-# 	--saved_models_dir saved_models/energy/testing_inj_1 \
-# 	--output_dir Results/energy/testing_inj_1 \
-# 	--device cuda:1\
-# 	--epochs 50 \
-# 	--mask 0\
-# 	--message injected_Unmasked 
-# 	# --options train test dev
+	--epochs 50 \
+	--message robust_2 
 
 
 

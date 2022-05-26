@@ -625,9 +625,6 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
 
         #### anomalies only in test data
         # set_trace()
-        mvalue = ex_input.mean()
-        if self.which_split in self.options:
-            ex_input = self.data[ts_id]['target'][ pos_id : pos_id+el ]        
     
            
       
