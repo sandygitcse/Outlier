@@ -12,7 +12,10 @@ import glob
 from ipdb import set_trace
 
 # DATA_DIRS = '/mnt/infonas/data/pratham/Forecasting/DILATE'
-DATA_DIRS = '/mnt/cat/data/sandy/Forecasting/'
+if "a99" in os.getcwd():
+    DATA_DIRS = '/mnt/a99/d0/sandy/Forecasting/'
+else:
+    DATA_DIRS = '/mnt/cat/data/sandy/Forecasting/'
 # DATA_DIRS = '.'
 def generate_train_dev_test_data(data, N_input):
     train_per = 0.6
@@ -342,7 +345,7 @@ def parse_gecco(dataset_name, N_input, N_output, t2v_type=None):
     df['EVENT'] = df['EVENT'].map({False:0, True: 1})
     data_mask = df[['EVENT']].to_numpy().T
     #data = np.expand_dims(data, axis=-1)
-    test_data = np.load(os.path.join(DATA_DIRS,"data","water_quality","gecco_test_mask.npy"))
+    test_data = np.load(os.path.join(DATA_DIRS,"data","water_quality","mask_gecco.npy"))
     test_l = len(test_data)
     # data_mask = np.zeros_like(data,dtype=float)
     n = data.shape[1]
@@ -350,9 +353,15 @@ def parse_gecco(dataset_name, N_input, N_output, t2v_type=None):
     dev_len = int(0.2*units) * N_output
     test_len = int(0.2*units) * N_output
     train_len = n - dev_len - test_len
-
+    
     ### generated masking
-    data_mask[...,-test_l-N_output:-N_output] = test_data 
+    units_l = n//50
+    dev_len_l = int(0.2*units_l) * 50
+    test_len_l = int(0.2*units_l) * 50
+    train_len_l = n - dev_len_l - test_len_l
+    # set_trace()
+
+    data_mask[...,train_len_l+dev_len_l-N_input:train_len_l+dev_len_l-N_input+test_l] = test_data 
   
     # feats_cont = np.expand_dims(df[['HUFL','HULL','MUFL','MULL','LUFL','LULL']].to_numpy(), axis=0)
 
@@ -688,18 +697,19 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
         os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'continuous_dataset.csv')
     )
     df_inject   = pd.read_csv(
-        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'elect_2_percent_amplitude.csv')
+        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', '2_percent_electricity.csv')
     )
-    # df_mask   = pd.read_csv(
-    #     os.path.join('.', 'data', 'masked_reduced.csv')
-    # )
+    df_mask   = pd.read_csv(
+        os.path.join('.', 'data', 'masked_reduced.csv')
+    )
 
 
-    test_data = np.load(os.path.join(DATA_DIRS,"Outliers","Outlier","data","new_masked.npy"))
+    test_data = np.load(os.path.join(DATA_DIRS,'data','electricity_load_forecasting_panama',"mask_electricity.npy"))
     test_l = len(test_data)
     data = df[['nat_demand']].to_numpy().T
     data_inj = df_inject[['nat_demand']].to_numpy().T
-    data_mask = df_inject[['label']].to_numpy().T
+    # data_mask = df_inject[['label']].to_numpy().T
+    data_mask = df_mask[['label']].to_numpy().T
     
     # data_inj = data
     #n = data.shape[1]
@@ -715,8 +725,14 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     test_len = int(0.2*units) * N_output
     train_len = n - dev_len - test_len
 
+
+    units_l = n//50
+    dev_len_l = int(0.2*units_l) * 50
+    test_len_l = int(0.2*units_l) * 50
+    train_len_l = n - dev_len_l - test_len_l
+
     ### generated masking
-    # data_mask[...,train_len+dev_len-N_output:-N_output] = test_data 
+    data_mask[...,train_len_l+dev_len_l-N_input:train_len_l+dev_len_l-N_input+test_l] = test_data 
     
     # import pdb ; pdb.set_trace()
 

@@ -643,9 +643,9 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
         # set_trace()
         mvalue = ex_input.mean()
         if self.which_split in self.options:
-            ex_input = self.data[ts_id]['target_inj'][ pos_id : pos_id+el ]        
+            ex_input = torch.tensor(self.data[ts_id]['target_inj'][ pos_id : pos_id+el ])        
             ex_mask = self.data[ts_id]['target_mask'][ pos_id : pos_id+el ] 
-            # ex_input[ex_mask==1]=mvalue
+            ex_input[ex_mask==1]=mvalue
             
       
         
