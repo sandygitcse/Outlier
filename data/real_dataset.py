@@ -474,7 +474,7 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
 
 
     #data = np.expand_dims(data, axis=-1)
-    test_data = np.load(os.path.join(DATA_DIRS,"data","energy-anomaly-detection","energy_inj_mask.npy"))
+    test_data = np.load(os.path.join(DATA_DIRS,"data","energy-anomaly-detection","mask_energy.npy"))
     test_l = len(test_data)
     # data_mask = np.zeros_like(data,dtype=float)
     n = data.shape[1]
@@ -483,8 +483,17 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
     test_len = int(0.2*units) * N_output
     train_len = n - dev_len - test_len
     # set_trace()
+
     ### generated masking
-    data_mask[...,-test_l-N_output:-N_output] = test_data 
+    units_l = n//50
+    dev_len_l = int(0.2*units_l) * 50
+    test_len_l = int(0.2*units_l) * 50
+    train_len_l = n - dev_len_l - test_len_l
+    # set_trace()
+
+
+    ### generated masking
+    data_mask[...,train_len_l+dev_len_l-N_input:train_len_l+dev_len_l-N_input+test_l] = test_data 
   
     # feats_cont = np.expand_dims(df[['HUFL','HULL','MUFL','MULL','LUFL','LULL']].to_numpy(), axis=0)
 
@@ -557,7 +566,7 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
         data_test[i]['feats'] = feats_test[i]
 
     # feats_info = {0:(24, 16), 1:(60, 16), 2:(0, 1), 3:(0, 1), 4:(0, 1), 5:(0, 1), 6:(0, 1)}
-    feats_info = {0:(24, 1),1:(31,16)}
+    feats_info = {0:(24, 16),1:(31,16)}
     # feats_info = {0:(0, 1)}
     i = len(feats_info)
     for j in range(i, data_train[0]['feats'].shape[-1]):
