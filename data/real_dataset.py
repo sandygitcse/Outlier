@@ -12,11 +12,12 @@ import glob
 from ipdb import set_trace
 
 # DATA_DIRS = '/mnt/infonas/data/pratham/Forecasting/DILATE'
-if "a99" in os.getcwd():
-    DATA_DIRS = '/mnt/a99/d0/sandy/Forecasting/'
-else:
-    DATA_DIRS = '/mnt/cat/data/sandy/Forecasting/'
+# if "a99" in os.getcwd():
+#     DATA_DIRS = '/mnt/a99/d0/sandy/Forecasting/'
+# else:
+#     DATA_DIRS = '/mnt/cat/data/sandy/Forecasting/'
 # DATA_DIRS = '.'
+DATA_DIRS = '/mnt/a99/d0/sandy/Forecasting/'
 def generate_train_dev_test_data(data, N_input):
     train_per = 0.6
     dev_per = 0.2
@@ -461,15 +462,15 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
 #    n = train_len + dev_len + test_len
 #    df = pd.read_csv('../Informer2020/data/ETT/ETTh1.csv').iloc[:n]
 
-    # df = pd.read_csv(DATA_DIRS+'data/energy-anomaly-detection/train.csv')
+    df = pd.read_csv(DATA_DIRS+'data/energy-anomaly-detection/train.csv')
     
-    # df = df[df['building_id']==966].interpolate(limit_direction='both',method='linear')
-    # data = df[['meter_reading']].to_numpy().T
+    df = df[df['building_id']==966].interpolate(limit_direction='both',method='linear')
+    data = df[['meter_reading']].to_numpy().T
     # # set_trace()
     # data_mask = df[['anomaly']].to_numpy().T
 
-    df = pd.read_csv(DATA_DIRS+'data/energy-anomaly-detection/energy_injected_5.csv')
-    data = df[['meter_reading']].to_numpy().T 
+    df = pd.read_csv(DATA_DIRS+'data/energy-anomaly-detection/energy_injected_reduced.csv')
+    data_inj = df[['meter_reading']].to_numpy().T 
     data_mask = df[['anomaly']].to_numpy().T
 
 
@@ -516,19 +517,23 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
 
     # feats_min = np.expand_dims(np.expand_dims(cal_date.dt.minute.values, axis=-1), axis=0)
 
-    #import ipdb ; ipdb.set_trace()
+    feats_dow = np.expand_dims(np.expand_dims(cal_date.dt.dayofweek.values, axis=-1), axis=0)
+
+    # import ipdb ; ipdb.set_trace()
 
     #feats = np.concatenate([feats_discrete, feats_cont], axis=-1)
     #feats = feats_discrete
-    feats = np.concatenate([feats_hod, feats_date], axis=-1)
+    feats = np.concatenate([feats_hod,feats_dow, feats_date], axis=-1)
 
     #data = (data - np.mean(data, axis=0, keepdims=True)).T
 
     data = torch.tensor(data, dtype=torch.float)
+    data_inj = torch.tensor(data_inj, dtype=torch.float)
     feats = torch.tensor(feats, dtype=torch.float)
     data_mask = torch.tensor(data_mask, dtype=torch.float)
 
     data_train = data[:, :train_len]
+    data_inj_train = data_inj[:, :train_len]
     feats_train = feats[:, :train_len]
     data_mask_train = data_mask[:, :train_len]
     data_dev, data_test,data_inj_dev,data_inj_test,data_mask_dev,data_mask_test = [], [],[],[],[],[]
@@ -540,6 +545,7 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
         for j in range(train_len+N_output, train_len+dev_len+1, N_output):
             if j <= n:
                 data_dev.append(data[i, :j])
+                data_inj_dev.append(data_inj[i,:j])
                 data_mask_dev.append(data_mask[i,:j])
                 feats_dev.append(feats[i, :j])
                 dev_tsid_map.append(i)
@@ -548,13 +554,14 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
             if j <= n:
                 # print(i,j,n)
                 data_test.append(data[i, :j])
+                data_inj_test.append(torch.tensor(data_inj[i,:j]))
                 data_mask_test.append(data_mask[i,:j])
                 feats_test.append(feats[i, :j])
                 test_tsid_map.append(i)
 
-    data_train = get_list_of_dict_format(data_train,data_train,data_mask_train)
-    data_dev = get_list_of_dict_format(data_dev,data_dev,data_mask_dev)
-    data_test = get_list_of_dict_format(data_test,data_test,data_mask_test)
+    data_train = get_list_of_dict_format(data_train,data_inj_train,data_mask_train)
+    data_dev = get_list_of_dict_format(data_dev,data_inj_dev,data_mask_dev)
+    data_test = get_list_of_dict_format(data_test,data_inj_test,data_mask_test)
 
 
     decompose_type = 'STL'
@@ -566,8 +573,8 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
         data_test[i]['feats'] = feats_test[i]
 
     # feats_info = {0:(24, 16), 1:(60, 16), 2:(0, 1), 3:(0, 1), 4:(0, 1), 5:(0, 1), 6:(0, 1)}
-    feats_info = {0:(24, 16),1:(31,16)}
-    # feats_info = {0:(0, 1)}
+    # feats_info = {0:(24, 1),1:(7,1),2:(31,16)}
+    feats_info = {0:(0, 1)}
     i = len(feats_info)
     for j in range(i, data_train[0]['feats'].shape[-1]):
         feats_info[j] = (-1, -1)

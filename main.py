@@ -275,7 +275,7 @@ elif args.dataset_name == 'energy':
     if args.normalize is None: args.normalize = 'zscore_per_series'
     if args.learning_rate == -1.: args.learning_rate = 0.001
     if args.batch_size == -1: args.batch_size = 128
-    if args.hidden_size == -1: args.hidden_size = 128
+    if args.hidden_size == -1: args.hidden_size = 256
     if args.num_grulstm_layers == -1: args.num_grulstm_layers = 1
     if args.v_dim == -1: args.v_dim = 4
     if args.b == -1: args.b = 24
@@ -486,8 +486,10 @@ if "train" in args.options:
     op = "train"
 if "test" in args.options:
     op = "test"
-if len(args.options)==3:
+if len(args.options)>=3:
     op = "all"
+if "mean" in args.options:
+    op=op+"_mean" 
 
 filen = f"{args.dataset_name}_ip_{args.N_input}_op_{args.N_output}_nhead_{args.nhead}_mask_{args.mask}_options_{op}_{args.message}"
 args.output_dir = os.path.join(DUMP_PATH, args.output_dir,filen)

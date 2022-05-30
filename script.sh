@@ -150,13 +150,13 @@
 
 python main.py energy \
 	--N_input 336 --N_output 168 \
-	--saved_models_dir saved_models/energy/robust \
-	--output_dir Results/energy/robust \
-	--device cuda:3\
+	--saved_models_dir saved_models/energy/robust_inj \
+	--output_dir Results/energy/robust_inj \
+	--device cuda:0\
 	--epochs 50 \
 	--mask 1\
-	--message without_augument_testing_4\
-	--options train test dev
+	--message no_feats_reduced_256\
+	--options train dev test mean
 
 
 
