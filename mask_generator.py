@@ -63,8 +63,8 @@ cwd = "/mnt/cat/data/sandy/Forecasting/data/"
 save_path=os.path.join(cwd,args.dataset_name)
 if not os.path.exists(save_path):
     os.makedirs(save_path)
-np.save(os.path.join(cwd,f"{args.dataset_name}_mask_iqr.npy"),final_mask)
-print(f"File saved as {cwd}{args.dataset_name}_mask_iqr.npy !!")
+np.save(os.path.join(save_path,f"{args.dataset_name}_mask_iqr.npy"),final_mask)
+print(f"File saved as {save_path}/{args.dataset_name}_mask_iqr.npy !!")
 
 
 
