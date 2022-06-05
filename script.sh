@@ -147,24 +147,23 @@
 # 	# --options train dev test
 
 
-python main.py energy \
-	--N_input 100 --N_output 50 \
-	--saved_models_dir saved_models/energy/ \
-	--output_dir Results/energy/ \
-	--device cuda:3\
-	--epochs 50 \
-	--message robust_2 
-
-
-
-# python main.py electricity \
+# python main.py energy \
 # 	--N_input 100 --N_output 50 \
-# 	--saved_models_dir saved_models/window \
-# 	--output_dir Results/window \
-# 	--nhead 4\
+# 	--saved_models_dir saved_models_train/energy/ \
+# 	--output_dir Results_train/energy/ \
 # 	--device cuda:3\
-# 	--message injected 
-# 	# --options train test dev
+# 	--epochs 50 \
+# 	--message 
+
+
+
+python main.py electricity \
+	--N_input 100 --N_output 25 \
+	--saved_models_dir saved_models/electricity_train \
+	--output_dir Results/electricity_train_m \
+	--device cuda:0\
+	--message test_02
+	# --options train test dev
 
 
 

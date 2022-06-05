@@ -769,11 +769,17 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     data_train = data[:, :train_len]
     feats_train = feats[:, :train_len]
 
-    data_dev, data_test = [], []
-    feats_dev, feats_test = [], []
-    dev_tsid_map, test_tsid_map = [], []
+    data_dev, data_test,data_train_m = [],[], []
+    feats_dev, feats_test,feats_train_m = [], [],[]
+    dev_tsid_map, test_tsid_map,train_m_tsid_map = [],[], []
     
     seq_len = 2*N_input+N_output
+    for i in range(data.shape[0]):
+        for j in range(seq_len, n+1, N_output):
+            if j <= n:
+                data_train_m.append(data[i, :j])
+                feats_train_m.append(feats[i, :j])
+                train_m_tsid_map.append(i)
     for i in range(data.shape[0]):
         for j in range(train_len+N_output, train_len+dev_len+1, N_output):
             if j <= n:
@@ -788,8 +794,12 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
                 test_tsid_map.append(i)
 
     data_train = get_list_of_dict_format(data_train)
+    data_train_m = get_list_of_dict_format(data_train_m)
     data_dev = get_list_of_dict_format(data_dev)
     data_test = get_list_of_dict_format(data_test)
+
+    for i in range(len(data_train_m)):
+        data_train_m[i]['feats'] = feats_train_m[i]
 
     for i in range(len(data_train)):
         data_train[i]['feats'] = feats_train[i]
@@ -805,9 +815,14 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
 
     seq_len = 2*N_input+N_output
     data_dev = prune_dev_test_sequence(data_dev, seq_len)
+    data_train_m = prune_dev_test_sequence(data_train_m, seq_len)
     data_test = prune_dev_test_sequence(data_test, seq_len)
-
+    set_trace()
     return (
-        data_train, data_dev, data_test, dev_tsid_map, test_tsid_map, feats_info
+        data_train, data_dev, data_train_m, dev_tsid_map, train_m_tsid_map, feats_info
     )
+
+    # return (
+    #     data_train, data_dev, data_test, dev_tsid_map, test_tsid_map, feats_info
+    # )
 
