@@ -148,28 +148,28 @@
 # 	--options train dev test
 
 
-python main.py energy \
-	--N_input 336 --N_output 168 \
-	--saved_models_dir saved_models/energy/robust_inj \
-	--output_dir Results/energy/robust_inj \
-	--device cuda:0\
-	--epochs 50 \
-	--mask 1\
-	--message no_feats_reduced_256\
-	--options train dev test mean
-
-
-
-# python main.py electricity \
+# python main.py energy \
 # 	--N_input 336 --N_output 168 \
-# 	--saved_models_dir saved_models/electricity_robust_3 \
-# 	--output_dir Results/electricity_robust_3 \
-# 	--nhead 4\
+# 	--saved_models_dir saved_models/energy/robust_inj \
+# 	--output_dir Results/energy/robust_inj \
+# 	--device cuda:0\
+# 	--epochs 50 \
 # 	--mask 1\
-# 	--epochs 50\
-# 	--device cuda:3\
-# 	--message section_with_augment\
-# 	--options train test dev
+# 	--message no_feats_reduced_256\
+# 	--options train dev test mean
+
+
+
+python main.py electricity \
+	--N_input 336 --N_output 168 \
+	--saved_models_dir saved_models/final_results/electricity \
+	--output_dir Results/final_results/electricity \
+	--nhead 4\
+	--mask 0\
+	--epochs 50\
+	--device cuda:1\
+	--message +test\
+	--options test
 
 
 

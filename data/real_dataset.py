@@ -718,9 +718,9 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     df_mask   = pd.read_csv(
         os.path.join('.', 'data', 'masked_reduced.csv')
     )
+    path = "/mnt/cat/data/sandy/Forecating/data/electricity/electr"
 
-
-    test_data = np.load(os.path.join(DATA_DIRS,'data','electricity_load_forecasting_panama',"mask_electricity.npy"))
+    test_data = np.load(os.path.join(DATA_DIRS,'data','electricity',"electricity_mask_iqr.npy"))
     test_l = len(test_data)
     data = df[['nat_demand']].to_numpy().T
     data_inj = df_inject[['nat_demand']].to_numpy().T
@@ -746,12 +746,12 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     dev_len_l = int(0.2*units_l) * 50
     test_len_l = int(0.2*units_l) * 50
     train_len_l = n - dev_len_l - test_len_l
-
-    ### generated masking
-    data_mask[...,train_len_l+dev_len_l-N_input:train_len_l+dev_len_l-N_input+test_l] = test_data 
-    
     # import pdb ; pdb.set_trace()
 
+    ### generated masking
+    data_mask[...,200:200+test_l] = test_data 
+    
+    
     cal_date = pd.to_datetime(df['datetime'])
     if t2v_type is None:
         feats_date = np.expand_dims(np.arange(0,n), axis=-1) / n * 10.

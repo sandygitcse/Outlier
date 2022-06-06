@@ -534,7 +534,7 @@ class TimeSeriesDatasetOfflineAggregate(torch.utils.data.Dataset):
             assert norm_type is not None
             data_for_norm = []
             for i in range(0, len(data)):
-                ex = data_agg[i]['target_inj']
+                ex = data_agg[i]['target']
                 data_for_norm.append(torch.FloatTensor(ex))
             #data_for_norm = to_float_tensor(data_for_norm).squeeze(-1)
 

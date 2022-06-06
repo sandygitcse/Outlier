@@ -1,0 +1,16 @@
+{
+        "saved_dir": "./saved_models/full_mask/electricity/electricity_ip_336_op_168_nhead_4_mask_1_options_all_mean_full_mask_01",
+        "batch_size": 128,
+        "hidden_size": 256,
+        "mask": 1,
+        "nhead": 4,
+        "options": [
+                "train",
+                "test",
+                "dev",
+                "mean"
+        ],
+        "epoch": 50,
+        "lr": 0.0001,
+        "message": "full_mask_01"
+}
