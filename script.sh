@@ -162,14 +162,14 @@
 
 python main.py electricity \
 	--N_input 336 --N_output 168 \
-	--saved_models_dir saved_models/final_results/electricity \
-	--output_dir Results/final_results/electricity \
+	--saved_models_dir saved_models/final_results/electricity_different \
+	--output_dir Results/final_results/electricity_different \
 	--nhead 4\
-	--mask 0\
+	--mask 1\
 	--epochs 50\
 	--device cuda:1\
-	--message +test\
-	--options test
+	--message +labelled\
+	--options train dev test mean
 
 
 
