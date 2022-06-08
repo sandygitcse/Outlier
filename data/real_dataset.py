@@ -432,11 +432,18 @@ def parse_gecco(dataset_name, N_input, N_output, t2v_type=None):
     data_train = data[:, :train_len]
     feats_train = feats[:, :train_len]
     # data_mask_train = data_mask[:, :train_len]
-    data_dev, data_test,data_inj_dev,data_inj_test,data_mask_dev,data_mask_test = [], [],[],[],[],[]
+    # data_dev, data_test,data_inj_dev,data_inj_test,data_mask_dev,data_mask_test = [], [],[],[],[],[]
+    data_dev, data_test,data_train_m = [],[], []
+    feats_dev, feats_test,feats_train_m = [], [],[]
+    dev_tsid_map, test_tsid_map,train_m_tsid_map = [],[], []
+    seq_len = 2*N_input+N_output
+    for i in range(data.shape[0]):
+        for j in range(seq_len, n+1, N_output):
+            if j <= n:
+                data_train_m.append(data[i, :j])
+                feats_train_m.append(feats[i, :j])
+                train_m_tsid_map.append(i)
 
-    data_dev, data_test = [], []
-    feats_dev, feats_test = [], []
-    dev_tsid_map, test_tsid_map = [], []
     for i in range(data.shape[0]):
         for j in range(train_len+N_output, train_len+dev_len+1, N_output):
             if j <= n:
@@ -452,13 +459,17 @@ def parse_gecco(dataset_name, N_input, N_output, t2v_type=None):
                 # data_mask_test.append(data_mask[i,:j])
                 feats_test.append(feats[i, :j])
                 test_tsid_map.append(i)
-
+ 
     data_train = get_list_of_dict_format(data_train)
+    data_train_m = get_list_of_dict_format(data_train_m)
     data_dev = get_list_of_dict_format(data_dev)
     data_test = get_list_of_dict_format(data_test)
 
 
+
     decompose_type = 'STL'
+    for i in range(len(data_train_m)):
+        data_train_m[i]['feats'] = feats_train_m[i]
     for i in range(len(data_train)):
         data_train[i]['feats'] = feats_train[i]
     for i in range(len(data_dev)):
@@ -475,13 +486,19 @@ def parse_gecco(dataset_name, N_input, N_output, t2v_type=None):
 
     seq_len = 2*N_input+N_output
     data_dev = prune_dev_test_sequence(data_dev, seq_len)
+    data_train_m = prune_dev_test_sequence(data_train_m, seq_len)
     data_test = prune_dev_test_sequence(data_test, seq_len)
     # import ipdb ; ipdb.set_trace()
 
+    # return (
+    #     data_train, data_dev, data_test, dev_tsid_map, test_tsid_map,
+    #     feats_info
+    # )
+
     return (
-        data_train, data_dev, data_test, dev_tsid_map, test_tsid_map,
-        feats_info
+        data_train, data_dev, data_train_m, dev_tsid_map, train_m_tsid_map, feats_info
     )
+
 
 
 
@@ -554,11 +571,18 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
     data_train = data[:, :train_len]
     feats_train = feats[:, :train_len]
     # data_mask_train = data_mask[:, :train_len]
-    data_dev, data_test,data_inj_dev,data_inj_test,data_mask_dev,data_mask_test = [], [],[],[],[],[]
+    # data_dev, data_test,data_inj_dev,data_inj_test,data_mask_dev,data_mask_test = [], [],[],[],[],[]
 
-    data_dev, data_test = [], []
-    feats_dev, feats_test = [], []
-    dev_tsid_map, test_tsid_map = [], []
+    data_dev, data_test,data_train_m = [],[], []
+    feats_dev, feats_test,feats_train_m = [], [],[]
+    dev_tsid_map, test_tsid_map,train_m_tsid_map = [],[], []
+    seq_len = 2*N_input+N_output
+    for i in range(data.shape[0]):
+        for j in range(seq_len, n+1, N_output):
+            if j <= n:
+                data_train_m.append(data[i, :j])
+                feats_train_m.append(feats[i, :j])
+                train_m_tsid_map.append(i)
     for i in range(data.shape[0]):
         for j in range(train_len+N_output, train_len+dev_len+1, N_output):
             if j <= n:
@@ -576,11 +600,14 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
                 test_tsid_map.append(i)
 
     data_train = get_list_of_dict_format(data_train)
+    data_train_m = get_list_of_dict_format(data_train_m)
     data_dev = get_list_of_dict_format(data_dev)
     data_test = get_list_of_dict_format(data_test)
 
 
     decompose_type = 'STL'
+    for i in range(len(data_train_m)):
+        data_train_m[i]['feats'] = feats_train_m[i]
     for i in range(len(data_train)):
         data_train[i]['feats'] = feats_train[i]
     for i in range(len(data_dev)):
@@ -597,12 +624,17 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
 
     seq_len = 2*N_input+N_output
     data_dev = prune_dev_test_sequence(data_dev, seq_len)
+    data_train_m = prune_dev_test_sequence(data_train_m, seq_len)
     data_test = prune_dev_test_sequence(data_test, seq_len)
     # import ipdb ; ipdb.set_trace()
 
+    # return (
+    #     data_train, data_dev, data_test, dev_tsid_map, test_tsid_map,
+    #     feats_info
+    # )
+
     return (
-        data_train, data_dev, data_test, dev_tsid_map, test_tsid_map,
-        feats_info
+        data_train, data_dev, data_train_m, dev_tsid_map, train_m_tsid_map, feats_info
     )
 
 
@@ -663,60 +695,76 @@ def parse_smd(dataset_name, N_input, N_output, t2v_type=None):
     feats_date = np.expand_dims(np.arange(0,n), axis=-1) / n * 10.
     feats = np.expand_dims(feats_date, axis=0)
     data_mask = np.zeros_like(data)
-
     data = torch.tensor(data, dtype=torch.float)
-    data_inj = torch.tensor(data, dtype=torch.float)
-    data_mask = torch.tensor(data_mask, dtype=torch.float)
     feats = torch.tensor(feats, dtype=torch.float)
+    # data_mask = torch.tensor(data_mask, dtype=torch.float)
+
     data_train = data[:, :train_len]
-    data_inj_train = data_inj[:, :train_len]
-    data_mask_train = data_mask[:, :train_len]
     feats_train = feats[:, :train_len]
-    data_dev, data_test,data_inj_dev,data_inj_test,data_mask_dev,data_mask_test = [], [],[],[],[],[]
-    feats_dev, feats_test = [], []
-    dev_tsid_map, test_tsid_map = [], []
-    seq_len = 2*N_input+N_output  #(336*2 + 168 = 840)
+    # data_dev, data_test,data_inj_dev,data_inj_test,data_mask_dev,data_mask_test = [], [],[],[],[],[]
+
+    data_dev, data_test,data_train_m = [],[], []
+    feats_dev, feats_test,feats_train_m = [], [],[]
+    dev_tsid_map, test_tsid_map,train_m_tsid_map = [],[], []
+    seq_len = 2*N_input+N_output
+    for i in range(data.shape[0]):
+        for j in range(seq_len, n+1, N_output):
+            if j <= n:
+                data_train_m.append(data[i, :j])
+                feats_train_m.append(feats[i, :j])
+                train_m_tsid_map.append(i)
     for i in range(data.shape[0]):
         for j in range(train_len+N_output, train_len+dev_len+1, N_output):
             if j <= n:
-                data_inj_dev.append(data_inj[i,:j])
-                data_mask_dev.append(data_mask[i,:j])
                 data_dev.append(data[i, :j])
+                # data_mask_dev.append(data_mask[i,:j])
                 feats_dev.append(feats[i, :j])
                 dev_tsid_map.append(i)
     for i in range(data.shape[0]):
-        for j in range(train_len+dev_len+N_output, n+1, N_output):
+        for j in range(train_len+dev_len-200+N_output, n+1, N_output):
             if j <= n:
-                data_inj_test.append(torch.tensor(data_inj[i,:j]))
-                mask = torch.zeros_like(data_mask[i,:j])
-                data_mask_test.append(mask)
-                # set_trace()
-                data_test.append(torch.tensor(data[i, :j]))
-                feats_test.append(torch.tensor(feats[i, :j]))
-                test_tsid_map.append(torch.tensor(i))
-        
-    
-    data_train = get_list_of_dict_format(data_train,data_inj_train,data_mask_train)
-    data_dev = get_list_of_dict_format(data_dev,data_inj_dev,data_mask_dev)
-    data_test = get_list_of_dict_format(data_test,data_inj_test,data_mask_test)
+                # print(i,j,n)
+                data_test.append(data[i, :j])
+                # data_mask_test.append(data_mask[i,:j])
+                feats_test.append(feats[i, :j])
+                test_tsid_map.append(i)
+
+    data_train = get_list_of_dict_format(data_train)
+    data_train_m = get_list_of_dict_format(data_train_m)
+    data_dev = get_list_of_dict_format(data_dev)
+    data_test = get_list_of_dict_format(data_test)
 
 
+    decompose_type = 'STL'
+    for i in range(len(data_train_m)):
+        data_train_m[i]['feats'] = feats_train_m[i]
     for i in range(len(data_train)):
         data_train[i]['feats'] = feats_train[i]
     for i in range(len(data_dev)):
         data_dev[i]['feats'] = feats_dev[i]
     for i in range(len(data_test)):
         data_test[i]['feats'] = feats_test[i]
-    feats_info = {0:(24, 16)}
+
+    # feats_info = {0:(24, 16), 1:(60, 16), 2:(0, 1), 3:(0, 1), 4:(0, 1), 5:(0, 1), 6:(0, 1)}
+    feats_info = {0:(30, 16)}
+    # feats_info = {0:(0, 1)}
     i = len(feats_info)
     for j in range(i, data_train[0]['feats'].shape[-1]):
         feats_info[j] = (-1, -1)
 
-    data_dev = prune_dev_test_sequence(data_dev, seq_len) #54 * 840
+    seq_len = 2*N_input+N_output
+    data_dev = prune_dev_test_sequence(data_dev, seq_len)
+    data_train_m = prune_dev_test_sequence(data_train_m, seq_len)
     data_test = prune_dev_test_sequence(data_test, seq_len)
-    # set_trace()
+    # import ipdb ; ipdb.set_trace()
+
+    # return (
+    #     data_train, data_dev, data_test, dev_tsid_map, test_tsid_map,
+    #     feats_info
+    # )
+
     return (
-        data_train, data_dev, data_test, dev_tsid_map, test_tsid_map, feats_info
+        data_train, data_dev, data_train_m, dev_tsid_map, train_m_tsid_map, feats_info
     )
 
 

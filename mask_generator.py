@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
-import seaborn as sns
+# import seaborn as sns
 from scipy.stats import iqr
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error,mean_absolute_error
@@ -10,6 +10,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset_name',  type=str, help='Dataset name', default="electricity")
+parser.add_argument('--N_input',  type=int, help='Input length for forecasting model', default=-1)
 args = parser.parse_args()
 path_dir = f"Results/{args.dataset_name}_train_m/"
 dirs = os.listdir(path_dir)
@@ -22,9 +23,10 @@ for folder in dirs:
     trues = np.load(path+'/targets.npy')
     new_preds = preds.squeeze()
     new_trues = trues.squeeze()
-    N_input = 336
+    if args.N_input == -1:
+        args.N_input = 336
     # print(new_preds.shape,new_trues.shape)
-    n = (N_input-1)//50 + 1
+    n = (args.N_input-1)//50 + 1
     l = new_preds.shape[0]
     final = []
     for line in range(0,l,n-1):
@@ -63,8 +65,11 @@ cwd = "/mnt/cat/data/sandy/Forecasting/data/"
 save_path=os.path.join(cwd,args.dataset_name)
 if not os.path.exists(save_path):
     os.makedirs(save_path)
-np.save(os.path.join(save_path,f"{args.dataset_name}_mask_iqr.npy"),final_mask)
+file_p = os.path.join(save_path,f"{args.dataset_name}_mask_iqr.npy")
+np.save(file_p,final_mask)
 print(f"File saved as {save_path}/{args.dataset_name}_mask_iqr.npy !!")
+import subprocess
 
-
+subprocess.run(["scp",file_p, f"sandy@dog.cse.iitb.ac.in:/mnt/a99/d0/sandy/Forecasting/data/{args.dataset_name}/{args.dataset_name}_mask_iqr.npy"])
+print(f"File saved as sandy@dog.cse.iitb.ac.in:/mnt/a99/d0/sandy/Forecasting/data/{args.dataset_name}/{args.dataset_name}_mask_iqr.npy !!")
 

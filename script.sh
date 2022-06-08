@@ -137,45 +137,63 @@
 # 	--message without_mask
 # 	# --options train test dev
 
-# python main.py gecco \
-# 	--N_input 100 --N_output 50 \
-# 	--saved_models_dir saved_models/gecco \
-# 	--output_dir Results/gecco/ \
-# 	--device cuda:3\
-# 	--epochs 1 \
-# 	--message robust_1
-# 	# --options train dev test
+python main.py gecco \
+	--N_input 100 --N_output 50 \
+	--saved_models_dir saved_models/gecco_train_m \
+	--output_dir Results/gecco_train_m/ \
+	--device cuda:1\
+	--epochs 1 \
+	--message whole_in_test
+
+python main.py gecco \
+	--N_input 100 --N_output 25 \
+	--saved_models_dir saved_models/gecco_train_m \
+	--output_dir Results/gecco_train_m/ \
+	--device cuda:1\
+	--epochs 1 \
+	--message whole_in_test
 
 
 # python main.py energy \
-# 	--N_input 100 --N_output 50 \
-# 	--saved_models_dir saved_models_train/energy/ \
-# 	--output_dir Results_train/energy/ \
-# 	--device cuda:3\
+# 	--N_input 100 --N_output 25 \
+# 	--saved_models_dir saved_models/energy_train_m/ \
+# 	--output_dir Results/energy_train_m/ \
+# 	--device cuda:1\
 # 	--epochs 50 \
-# 	--message 
+# 	--message whole_in_test
 
 
 
-python main.py electricity \
-	--N_input 100 --N_output 25 \
-	--saved_models_dir saved_models/electricity_train \
-	--output_dir Results/electricity_train_m \
-	--device cuda:0\
-	--message test_02
-	# --options train test dev
+# python main.py electricity \
+# 	--N_input 100 --N_output 25 \
+# 	--saved_models_dir saved_models/electricity_train \
+# 	--output_dir Results/electricity_train_m \
+# 	--device cuda:0\
+# 	--message test_02
+# 	# --options train test dev
 
 
 
 # python main.py smd \
-# 	--N_input 200 --N_output 50 \
+# 	--N_input 100 --N_output 50 \
 # 	--saved_models_dir saved_models/forecasting__smd/\
 # 	--output_dir Results/forcasting_smd\
 # 	--nhead 1\
 # 	--mask 0\
-# 	--device cuda:0\
-# 	--message 200_50_head_1_2_data_hidden_size_64\
-# 	--options train dev test
+# 	--device cuda:1\
+# 	--epochs 50\
+# 	--message whole_data
+
+
+# python main.py smd \
+# 	--N_input 100 --N_output 25 \
+# 	--saved_models_dir saved_models/forecasting__smd/\
+# 	--output_dir Results/forcasting_smd\
+# 	--nhead 1\
+# 	--mask 0\
+# 	--device cuda:1\
+# 	--epochs 50\
+# 	--message whole_data
 
 
 
