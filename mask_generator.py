@@ -55,8 +55,8 @@ for folder in dirs:
     else:
         final_50 = mask
 # print(final_25.shape,final_50.shape)
-length = min(len(final_25)-25,len(final_50))
-final_25 = final_25[25:length+25]
+length = min(len(final_25),len(final_50))
+final_25 = final_25[:length]
 final_50 = final_50[:length]
 final_mask = final_25*final_50
 # print(final_mask.shape)
