@@ -150,38 +150,48 @@
 
 # python main.py energy \
 # 	--N_input 336 --N_output 168 \
-# 	--saved_models_dir saved_models/energy/robust_inj \
-# 	--output_dir Results/energy/robust_inj \
-# 	--device cuda:0\
+# 	--saved_models_dir saved_models/final_results/energy/ \
+# 	--output_dir Results/final_results/energy/\
+# 	--device cuda:1\
 # 	--epochs 50 \
+# 	--mask 0\
+# 	--hidden_size 128\
+# 	--message no_feats+labelled
+# 	--options train dev test mean
+
+
+# python main.py electricity \
+# 	--N_input 336 --N_output 168 \
+# 	--saved_models_dir saved_models/final_results/electricity_different \
+# 	--output_dir Results/final_results/electricity_different \
+# 	--nhead 4\
 # 	--mask 1\
-# 	--message no_feats_reduced_256\
+# 	--epochs 50\
+# 	--device cuda:1\
+# 	--message +labelled\
 # 	--options train dev test mean
 
 
 
-python main.py electricity \
-	--N_input 336 --N_output 168 \
-	--saved_models_dir saved_models/final_results/electricity_different \
-	--output_dir Results/final_results/electricity_different \
-	--nhead 4\
+python main.py smd \
+	--N_input 200 --N_output 50 \
+	--saved_models_dir saved_models/final_results/smd\
+	--output_dir Results/final_results/smd\
+	--nhead 1\
+	--mask 0\
+	--device cuda:1\
+	--message +test\
+	--options test
+
+python main.py smd \
+	--N_input 200 --N_output 50 \
+	--saved_models_dir saved_models/final_results/smd\
+	--output_dir Results/final_results/smd\
+	--nhead 1\
 	--mask 1\
-	--epochs 50\
 	--device cuda:1\
 	--message +labelled\
-	--options train dev test mean
-
-
-
-# python main.py smd \
-# 	--N_input 200 --N_output 50 \
-# 	--saved_models_dir saved_models/forecasting__smd/\
-# 	--output_dir Results/forcasting_smd\
-# 	--nhead 1\
-# 	--mask 0\
-# 	--device cuda:0\
-# 	--message 200_50_head_1_2_data_hidden_size_64\
-# 	--options train dev test
+	--options test train dev mean
 
 
 

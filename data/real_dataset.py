@@ -475,7 +475,8 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
 
 
     #data = np.expand_dims(data, axis=-1)
-    test_data = np.load(os.path.join(DATA_DIRS,"data","energy-anomaly-detection","mask_energy.npy"))
+    # test_data = np.load(os.path.join(DATA_DIRS,"data","energy-anomaly-detection","mask_energy.npy"))
+    test_data = np.load(os.path.join(DATA_DIRS,"data","energy","energy_mask_iqr.npy"))
     test_l = len(test_data)
     # data_mask = np.zeros_like(data,dtype=float)
     n = data.shape[1]
@@ -494,8 +495,8 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
 
 
     ### generated masking
-    data_mask[...,train_len_l+dev_len_l-N_input:train_len_l+dev_len_l-N_input+test_l] = test_data 
-  
+    # data_mask[...,train_len_l+dev_len_l-N_input:train_len_l+dev_len_l-N_input+test_l] = test_data 
+    # data_mask[...,200:200+test_l]=test_data
     # feats_cont = np.expand_dims(df[['HUFL','HULL','MUFL','MULL','LUFL','LULL']].to_numpy(), axis=0)
 
     cal_date = pd.to_datetime(df['timestamp'])
