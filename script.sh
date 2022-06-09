@@ -137,21 +137,21 @@
 # 	--message without_mask
 # 	# --options train test dev
 
-python main.py gecco \
-	--N_input 100 --N_output 50 \
-	--saved_models_dir saved_models/gecco_train_m \
-	--output_dir Results/gecco_train_m/ \
-	--device cuda:1\
-	--epochs 1 \
-	--message whole_in_test
+# python main.py gecco \
+# 	--N_input 100 --N_output 50 \
+# 	--saved_models_dir saved_models/gecco_train_m \
+# 	--output_dir Results/gecco_train_m/ \
+# 	--device cuda:1\
+# 	--epochs 1 \
+# 	--message whole_in_test
 
-python main.py gecco \
-	--N_input 100 --N_output 25 \
-	--saved_models_dir saved_models/gecco_train_m \
-	--output_dir Results/gecco_train_m/ \
-	--device cuda:1\
-	--epochs 1 \
-	--message whole_in_test
+# python main.py gecco \
+# 	--N_input 100 --N_output 25 \
+# 	--saved_models_dir saved_models/gecco_train_m \
+# 	--output_dir Results/gecco_train_m/ \
+# 	--device cuda:1\
+# 	--epochs 1 \
+# 	--message whole_in_test
 
 
 # python main.py energy \
