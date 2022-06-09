@@ -148,50 +148,40 @@
 # 	--options train dev test
 
 
-# python main.py energy \
-# 	--N_input 336 --N_output 168 \
-# 	--saved_models_dir saved_models/final_results/energy/ \
-# 	--output_dir Results/final_results/energy/\
-# 	--device cuda:1\
-# 	--epochs 50 \
-# 	--mask 0\
-# 	--hidden_size 128\
-# 	--message no_feats+labelled
-# 	--options train dev test mean
-
-
-# python main.py electricity \
-# 	--N_input 336 --N_output 168 \
-# 	--saved_models_dir saved_models/final_results/electricity_different \
-# 	--output_dir Results/final_results/electricity_different \
-# 	--nhead 4\
-# 	--mask 1\
-# 	--epochs 50\
-# 	--device cuda:1\
-# 	--message +labelled\
-# 	--options train dev test mean
-
-
-
-python main.py smd \
-	--N_input 200 --N_output 50 \
-	--saved_models_dir saved_models/final_results/smd\
-	--output_dir Results/final_results/smd\
-	--nhead 1\
-	--mask 0\
+python main.py energy \
+	--N_input 336 --N_output 168 \
+	--saved_models_dir saved_models/final_results/energy/ \
+	--output_dir Results/final_results/energy/\
 	--device cuda:1\
-	--message +test\
-	--options test
-
-python main.py smd \
-	--N_input 200 --N_output 50 \
-	--saved_models_dir saved_models/final_results/smd\
-	--output_dir Results/final_results/smd\
-	--nhead 1\
+	--epochs 50 \
 	--mask 1\
+	--hidden_size 128\
+	--message no_feats+full_mask\
+	--options train dev test mean
+
+
+python main.py electricity \
+	--N_input 336 --N_output 168 \
+	--saved_models_dir saved_models/final_results/electricity\
+	--output_dir Results/final_results/electricity \
+	--nhead 4\
+	--mask 1\
+	--epochs 50\
 	--device cuda:1\
-	--message +labelled\
-	--options test train dev mean
+	--message +full_mask\
+	--options train dev test mean
+
+
+
+# python main.py smd \
+# 	--N_input 200 --N_output 50 \
+# 	--saved_models_dir saved_models/final_results/smd\
+# 	--output_dir Results/final_results/smd\
+# 	--nhead 1\
+# 	--mask 0\
+# 	--device cuda:1\
+# 	--message +test\
+# 	--options test
 
 
 

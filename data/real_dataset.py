@@ -496,7 +496,10 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
 
     ### generated masking
     # data_mask[...,train_len_l+dev_len_l-N_input:train_len_l+dev_len_l-N_input+test_l] = test_data 
-    # data_mask[...,200:200+test_l]=test_data
+    data_mask[...,200:200+test_l]=test_data
+
+
+    
     # feats_cont = np.expand_dims(df[['HUFL','HULL','MUFL','MULL','LUFL','LULL']].to_numpy(), axis=0)
 
     cal_date = pd.to_datetime(df['timestamp'])
@@ -713,13 +716,13 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     df = pd.read_csv(
         os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'continuous_dataset.csv')
     )
-    # df_inject   = pd.read_csv(
-    #     os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', '2_percent_electricity.csv')
-    # )
-    
     df_inject   = pd.read_csv(
-        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'electricity_high_amp_train_low_amp_test.csv')
+        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', '2_percent_electricity.csv')
     )
+    
+    # df_inject   = pd.read_csv(
+    #     os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'electricity_high_amp_train_low_amp_test.csv')
+    # )
 
     df_mask   = pd.read_csv(
         os.path.join('.', 'data', 'masked_reduced.csv')
@@ -754,7 +757,7 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     # import pdb ; pdb.set_trace()
 
     ### generated masking
-    # data_mask[...,200:200+test_l] = test_data 
+    data_mask[...,200:200+test_l] = test_data 
     
     
     cal_date = pd.to_datetime(df['datetime'])
