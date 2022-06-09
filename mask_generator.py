@@ -56,7 +56,7 @@ for folder in dirs:
         chunk['trues'] = new_trues[line:line+n]
         chunk['mask'] = np.zeros_like(new_trues[line:line+n])
         chunk['mse'] = mse_norm[line:line+n]
-    final.append(chunk)
+        final.append(chunk)
     
 
     labels = labels[200:200+l*h].reshape(-1,h)
@@ -70,7 +70,7 @@ for folder in dirs:
 
     fpr, tpr, thresholds = roc_curve(label, mse_norm)
     score = metrics.auc(fpr, tpr)
-    # print(labels.shape,new_preds.shape,len(label),len(mse))
+    print(labels.shape,new_preds.shape,len(label),len(mse),len(final))
     # print(thresholds)
     # Calculate the G-mean
     gmean = np.sqrt(tpr * (1 - fpr))
@@ -105,12 +105,12 @@ for folder in dirs:
         final_25 = mask 
     else:
         final_50 = mask
-# print(final_25.shape,final_50.shape)
+print(final_25.shape,final_50.shape)
 length = min(len(final_25),len(final_50))
 final_25 = final_25[:length]
 final_50 = final_50[:length]
 final_mask = final_25*final_50
-# print(final_mask.shape)
+print(final_mask.shape)
 
 cwd = "/mnt/cat/data/sandy/Forecasting/data/"
 save_path=os.path.join(cwd,args.dataset_name)
@@ -121,6 +121,6 @@ np.save(file_p,final_mask)
 print(f"File saved as {save_path}/{args.dataset_name}_mask_roc.npy !!")
 import subprocess
 
-subprocess.run(["scp",file_p, f"sandy@dog.cse.iitb.ac.in:/mnt/a99/d0/sandy/Forecasting/data/{args.dataset_name}/{args.dataset_name}_mask_iqr.npy"])
-print(f"File saved as sandy@dog.cse.iitb.ac.in:/mnt/a99/d0/sandy/Forecasting/data/{args.dataset_name}/{args.dataset_name}_mask_iqr.npy !!")
+subprocess.run(["scp",file_p, f"sandy@dog.cse.iitb.ac.in:/mnt/a99/d0/sandy/Forecasting/data/{args.dataset_name}/{args.dataset_name}_mask_roc.npy"])
+print(f"File saved as sandy@dog.cse.iitb.ac.in:/mnt/a99/d0/sandy/Forecasting/data/{args.dataset_name}/{args.dataset_name}_mask_roc.npy !!")
 
