@@ -154,23 +154,31 @@
 # 	--message whole_in_test
 
 
-# python main.py energy \
-# 	--N_input 100 --N_output 25 \
-# 	--saved_models_dir saved_models/energy_train_m/ \
-# 	--output_dir Results/energy_train_m/ \
-# 	--device cuda:1\
-# 	--epochs 50 \
-# 	--message whole_in_test
-
-
-
-python main.py electricity \
-	--N_input 336 --N_output 168 \
-	--saved_models_dir saved_models/electricity \
-	--output_dir Results/electricity \
+python main.py energy \
+	--N_input 336 --N_output 50 \
+	--saved_models_dir saved_models/energy_train_m/ \
+	--output_dir Results/energy_train_m/ \
 	--device cuda:1\
-	--message imputation
-	# --options train test dev
+	--epochs 50 \
+	--message whole_in_test
+
+
+python main.py energy \
+	--N_input 336 --N_output 25 \
+	--saved_models_dir saved_models/energy_train_m/ \
+	--output_dir Results/energy_train_m/ \
+	--device cuda:1\
+	--epochs 50 \
+	--message whole_in_test
+
+
+# python main.py electricity \
+# 	--N_input 336 --N_output 168 \
+# 	--saved_models_dir saved_models/electricity \
+# 	--output_dir Results/electricity \
+# 	--device cuda:1\
+# 	--message imputation
+# 	# --options train test dev
 
 # python main.py electricity \
 # 	--N_input 100 --N_output 25 \

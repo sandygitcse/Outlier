@@ -64,7 +64,7 @@ for folder in dirs:
         final.append(chunk)
     
 
-    labeling = labels[200:200+l*h].reshape(-1,h)
+    labeling = labels[672:672+l*h].reshape(-1,h)
 
 
     last = 3
