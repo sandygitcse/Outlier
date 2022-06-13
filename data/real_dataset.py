@@ -773,7 +773,7 @@ def parse_smd(dataset_name, N_input, N_output, t2v_type=None):
 def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     #df = pd.read_csv('data/electricity_load_forecasting_panama/continuous_dataset.csv')
     df = pd.read_csv(
-        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', '2_percent_electricity.csv')
+        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'electricity_imputation_iqr.csv')
     )
     data = df[['nat_demand']].to_numpy().T
 
@@ -835,7 +835,7 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
                 feats_dev.append(feats[i, :j])
                 dev_tsid_map.append(i)
     for i in range(data.shape[0]):
-        for j in range(train_len+dev_len-336+N_output, n+1, N_output):
+        for j in range(train_len+dev_len+N_output, n+1, N_output):
             if j <= n:
                 data_test.append(data[i, :j])
                 feats_test.append(feats[i, :j])
@@ -865,12 +865,12 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     data_dev = prune_dev_test_sequence(data_dev, seq_len)
     data_train_m = prune_dev_test_sequence(data_train_m, seq_len)
     data_test = prune_dev_test_sequence(data_test, seq_len)
-    set_trace()
-    return (
-        data_train, data_dev, data_train_m, dev_tsid_map, train_m_tsid_map, feats_info
-    )
-
+    # set_trace()
     # return (
-    #     data_train, data_dev, data_test, dev_tsid_map, test_tsid_map, feats_info
+    #     data_train, data_dev, data_train_m, dev_tsid_map, train_m_tsid_map, feats_info
     # )
+
+    return (
+        data_train, data_dev, data_test, dev_tsid_map, test_tsid_map, feats_info
+    )
 

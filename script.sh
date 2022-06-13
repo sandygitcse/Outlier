@@ -164,6 +164,14 @@
 
 
 
+python main.py electricity \
+	--N_input 336 --N_output 168 \
+	--saved_models_dir saved_models/electricity \
+	--output_dir Results/electricity \
+	--device cuda:1\
+	--message imputation
+	# --options train test dev
+
 # python main.py electricity \
 # 	--N_input 100 --N_output 25 \
 # 	--saved_models_dir saved_models/electricity_train \
