@@ -165,11 +165,11 @@ python main.py electricity \
 	--saved_models_dir saved_models/final_results/electricity\
 	--output_dir Results/final_results/electricity \
 	--nhead 4\
-	--mask 1\
+	--mask 0\
 	--epochs 50\
 	--device cuda:1\
-	--message +full_mask_roc\
-	--options train dev test mean
+	--message +imputation_train\
+	--options train dev test
 
 
 

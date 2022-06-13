@@ -719,8 +719,12 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     df = pd.read_csv(
         os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'continuous_dataset.csv')
     )
+
+    # df_inject   = pd.read_csv(
+    #     os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', '2_percent_electricity.csv')
+    # )
     df_inject   = pd.read_csv(
-        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', '2_percent_electricity.csv')
+        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', 'electricity_imputation_iqr.csv')
     )
     
     # df_inject   = pd.read_csv(
@@ -767,7 +771,7 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     # set_trace()
 
     ### generated masking
-    data_mask[...,200:200+test_l] = test_data 
+    # data_mask[...,200:200+test_l] = test_data 
     
     
     cal_date = pd.to_datetime(df['datetime'])
