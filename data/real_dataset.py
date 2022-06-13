@@ -472,9 +472,10 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
     # # set_trace()
     # data_mask = df[['anomaly']].to_numpy().T
 
-    df = pd.read_csv(DATA_DIRS+'data/energy-anomaly-detection/energy_injected_reduced.csv')
-    data_inj = df[['meter_reading']].to_numpy().T 
-    data_mask = df[['anomaly']].to_numpy().T
+    # df = pd.read_csv(DATA_DIRS+'data/energy-anomaly-detection/energy_injected_reduced.csv')
+    df_inj = pd.read_csv(DATA_DIRS+'data/energy/energy_imputation_iqr.csv')
+    data_inj = df_inj[['meter_reading']].to_numpy().T 
+    data_mask = df_inj[['anomaly']].to_numpy().T
 
 
     #data = np.expand_dims(data, axis=-1)
@@ -499,7 +500,7 @@ def parse_energy_data(dataset_name, N_input, N_output, t2v_type=None):
 
     ### generated masking
     # data_mask[...,train_len_l+dev_len_l-N_input:train_len_l+dev_len_l-N_input+test_l] = test_data 
-    data_mask[...,200:200+test_l]=test_data
+    # data_mask[...,200:200+test_l]=test_data
 
 
     
