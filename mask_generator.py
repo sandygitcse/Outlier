@@ -19,18 +19,23 @@ dirs = os.listdir(path_dir)
 final_input,final_25,final_50 = [], [],[]
 
 DATA_DIRS = "/mnt/a99/d0/sandy/Forecasting/"
-df = pd.read_csv(
-    os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', '2_percent_electricity.csv')
-)
-data = df[['nat_demand']].to_numpy().T
-# labels =  df[['label']].to_numpy()
 
+if args.dataset_name=='electricity':
+    df = pd.read_csv(
+        os.path.join(DATA_DIRS, 'data', 'electricity_load_forecasting_panama', '2_percent_electricity.csv')
+    )
+    data = df[['nat_demand']].to_numpy().T
+    labels =  df[['label']].to_numpy()
+elif args.dataset_name == 'energy':
+    df = pd.read_csv(DATA_DIRS+'data/energy-anomaly-detection/energy_injected_5.csv')
+    data = df[['meter_reading']].to_numpy().T 
+    labels = df[['anomaly']].to_numpy()
 
 
 
 
 for folder in dirs:
-    labels =  df[['label']].to_numpy()
+    
     path = os.path.join(path_dir,folder,args.dataset_name)
     # print(path)
     preds = np.load(path+'/trans-mse-ar_pred_mu.npy')
@@ -59,18 +64,18 @@ for folder in dirs:
         final.append(chunk)
     
 
-    labels = labels[200:200+l*h].reshape(-1,h)
+    labeling = labels[200:200+l*h].reshape(-1,h)
 
 
     last = 3
     # if h==25:
     #     last = 3
 
-    label = [1 if sum(line)>5 else 0 for line in labels]
+    label = [1 if sum(line)>5 else 0 for line in labeling]
 
     fpr, tpr, thresholds = roc_curve(label, mse_norm)
     score = metrics.auc(fpr, tpr)
-    print(labels.shape,new_preds.shape,len(label),len(mse),len(final))
+    print(labeling.shape,new_preds.shape,len(label),len(mse),len(final))
     # print(thresholds)
     # Calculate the G-mean
     gmean = np.sqrt(tpr * (1 - fpr))
@@ -105,7 +110,7 @@ for folder in dirs:
         final_25 = mask 
     else:
         final_50 = mask
-print(final_25.shape,final_50.shape)
+print(final_25.shape,final_50.shape,labels.shape)
 length = min(len(final_25),len(final_50))
 final_25 = final_25[:length]
 final_50 = final_50[:length]
