@@ -148,16 +148,16 @@
 # 	--options train dev test
 
 
-python main.py energy \
-	--N_input 336 --N_output 168 \
-	--saved_models_dir saved_models/final_results/energy/ \
-	--output_dir Results/final_results/energy/\
-	--device cuda:1\
-	--epochs 50 \
-	--mask 1\
-	--hidden_size 128\
-	--message no_feats+full_mask\
-	--options train dev test mean
+# python main.py energy \
+# 	--N_input 336 --N_output 168 \
+# 	--saved_models_dir saved_models/final_results/energy/ \
+# 	--output_dir Results/final_results/energy/\
+# 	--device cuda:1\
+# 	--epochs 50 \
+# 	--mask 1\
+# 	--hidden_size 128\
+# 	--message no_feats+full_mask\
+# 	--options train dev test mean
 
 
 python main.py electricity \
@@ -168,7 +168,7 @@ python main.py electricity \
 	--mask 1\
 	--epochs 50\
 	--device cuda:1\
-	--message +full_mask\
+	--message +full_mask_roc\
 	--options train dev test mean
 
 

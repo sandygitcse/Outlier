@@ -10,7 +10,10 @@ from torch.utils.data import Dataset, DataLoader
 from statsmodels.tsa.seasonal import seasonal_decompose, STL
 import glob
 from ipdb import set_trace
-
+from sklearn.metrics import roc_curve, auc
+from sklearn.datasets import make_classification
+from sklearn.metrics import confusion_matrix
+from sklearn import metrics, datasets
 # DATA_DIRS = '/mnt/infonas/data/pratham/Forecasting/DILATE'
 # if "a99" in os.getcwd():
 #     DATA_DIRS = '/mnt/a99/d0/sandy/Forecasting/'
@@ -728,7 +731,7 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
         os.path.join('.', 'data', 'masked_reduced.csv')
     )
     
-    test_data = np.load(os.path.join(DATA_DIRS,'data','electricity',"electricity_mask_iqr.npy"))
+    test_data = np.load(os.path.join(DATA_DIRS,'data','electricity',"electricity_mask_roc.npy"))
     test_l = len(test_data)
     data = df[['nat_demand']].to_numpy().T
     data_inj = df_inject[['nat_demand']].to_numpy().T
@@ -755,6 +758,13 @@ def parse_electricity(dataset_name, N_input, N_output, t2v_type=None):
     test_len_l = int(0.2*units_l) * 50
     train_len_l = n - dev_len_l - test_len_l
     # import pdb ; pdb.set_trace()
+
+    ###roc
+    # set_trace()
+    # fpr, tpr, thresholds = roc_curve(data_mask[...,200:200+test_l].reshape(-1,), test_data)
+    # score = metrics.auc(fpr, tpr)
+    # confusion_matrix(data_mask[...,200:200+test_l].reshape(-1,), test_data)
+    # set_trace()
 
     ### generated masking
     data_mask[...,200:200+test_l] = test_data 
