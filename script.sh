@@ -114,108 +114,56 @@
 #	--output_dir aaai_Outputs_taxi30min_e336_d168 \
 #	--device cuda:2
 
-# python main.py ett \
-# 	--N_input 384 --N_output 192 \
-# 	--saved_models_dir saved_models/ett_testing/test1_model \
-# 	--output_dir Results/ett_testing/test_1_results \
-# 	--device cuda:0\
-# 	--message without_mask
-# 	# --options train test dev
-
-#python main.py Solar \
-#	--N_input 336 --N_output 168 \
-#	--saved_models_dir aaai_saved_models_Solar_e336_d168_2_rp \
-#	--output_dir aaai_Outputs_Solar_e336_d168_2_rp \
-#	--K_list 1 2 6 12 \
+#python main.py ett \
+#	--N_input 384 --N_output 192 \
+#	--saved_models_dir aaai_saved_models_ett_e384_d192_chunkfix_3_lr1e5_prunelastday_rp \
+#	--output_dir aaai_Outputs_ett_e384_d192_chunkfix_3_lr1e5_prunelastday_rp \
+#	--K_list 1 4 6 12 \
+#	--cv_inf 0 \
 #	--device cuda:2
 
-# python main.py etthourly \
-# 	--N_input 720 --N_output 168 \
-# 	--saved_models_dir saved_models/ett_hourly/testing_3 \
-# 	--output_dir Results/ett_hourly/testing_3 \
-# 	--device cuda:0\
-# 	--message without_mask
-# 	# --options train test dev
-
-# python main.py gecco \
-# 	--N_input 480 --N_output 180 \
-# 	--saved_models_dir saved_models/gecco_min/robust_1\
-# 	--output_dir Results/gecco_min/robust_1 \
-# 	--device cuda:3\
-# 	--epochs 1 \
-# 	--mask 1\
-# 	--message section\
-# 	--options train dev test
-
-
-# python main.py energy \
+# python main.py Solar \
 # 	--N_input 336 --N_output 168 \
-# 	--saved_models_dir saved_models/final_results/energy/ \
-# 	--output_dir Results/final_results/energy/\
-# 	--device cuda:1\
-# 	--epochs 50 \
-# 	--mask 0\
-# 	--hidden_size 128\
-# 	--message no_feats+imputation\
-# 	--options train dev test
+# 	--saved_models_dir aaai_saved_models_Solar_e336_d168_2_rp \
+# 	--output_dir aaai_Outputs_Solar_e336_d168_2_rp \
+# 	--K_list 1 2 6 12 \
+# 	--cv_inf 0 \
+# 	--device cuda:1 \
+# 	--n_quant 9
 
-
-python main.py taxi \
-	--N_input 336 --N_output 168 \
-	--saved_models_dir saved_models/taxi \
-	--output_dir Results/taxi \
-	--nhead 4 \
-	--mask 0 \
-	--epochs 50 \
-	--device cuda:0 \
-	--message +test \
-	--options test
-
-
-# python main.py electricity \
-# 	--N_input 336 --N_output 168 \
-# 	--saved_models_dir saved_models/global_point/electricity\
-# 	--output_dir Results/global_point/electricity \
-# 	--nhead 4\
-# 	--mask 0\
-# 	--epochs 50\
-# 	--device cuda:1\
-# 	--message +global_point_0.3\
-# 	--options test
-
-
-# python main.py smd \
-# 	--N_input 200 --N_output 50 \
-# 	--saved_models_dir saved_models/final_results/smd\
-# 	--output_dir Results/final_results/smd\
-# 	--nhead 1\
-# 	--mask 0\
-# 	--device cuda:1\
-# 	--message +test\
-# 	--options test
-
-
-
-#python main.py foodinflation \
-#	--N_input 90 --N_output 30 \
-#	--saved_models_dir saved_models_foodinflation \
-#	--output_dir Outputs_foodinflation \
+#python main.py etthourly \
+#	--N_input 168 --N_output 168 \
+#	--saved_models_dir aaai_saved_models_etthourly_e168_d168_9_lr1e5_prunelastday_rp \
+#	--output_dir aaai_Outputs_etthourly_e168_d168_9_lr1e5_prunelastday_rp \
+#	--K_list 1 2 6 \
+#	--cv_inf 0 \
+#	--device cuda:1
+#
+#python main.py electricity \
+#	--N_input 336 --N_output 168 \
+#	--saved_models_dir aaai_saved_models_electricity_e336_d168_testprune_2_rp \
+#	--output_dir aaai_Outputs_electricity_e336_d168_testprune_2_rp \
+#	--K_list 1 2 6 12 \
+#	--cv_inf 0 \
 #	--device cuda:1
 
-# python3 main.py telemetry \
-# 	--N_input 365 --N_output 100 \
-# 	--saved_models_dir saved_models_telemetry_tyt \
-# 	--output_dir Outputs_telemetry_t \
-# 	--initialization 0\
-# 	--device cuda:1
+# python main.py foodinflation \
+# 	--N_input 90 --N_output 30 \
+# 	--saved_models_dir saved_models_foodinflation \
+# 	--output_dir Outputs_foodinflation \
+# 	--K_list 1 \
+# 	--cv_inf 0 \
+# 	--device cuda:1 \
+	
 
-
-# python3 main.py outlier \
-# 	--N_input 100 --N_output 50 \
-# 	--saved_models_dir saved_models/saved_models_synthetic_out_huber \
-# 	--output_dir Outputs/Outputs_synthetic_out_huber \
-# 	--initialization 0\
-# 	--device cuda:0
+python3 main.py telemetry \
+	--N_input 365 --N_output 30 \
+	--saved_models_dir saved_models_telemetry_fix \
+	--output_dir Outputs_telemetry_fix \
+	--K_list 1 \
+	--cv_inf 0 \
+	--device cuda:0 \
+	--n_quant 9
 
 # Commands for Oracle and SimRetrieval
 #python main.py ett \
@@ -239,9 +187,9 @@ python main.py taxi \
 #	--normalize same \
 #	--device cuda:2
 #
-# python main.py electricity \
-# 	--N_input 1680 --N_output 168 \
-# 	--saved_models_dir saved_models/saved_models_electricity_oracle \
-# 	--output_dir Outputs/Outputs_electricity_oracle \
-# 	--normalize same \
-# 	--device cuda:0
+#python main.py electricity \
+#	--N_input 1680 --N_output 168 \
+#	--saved_models_dir aaai_saved_models_electricity_oracle \
+#	--output_dir aaai_Outputs_electricity_oracle \
+#	--normalize same \
+#	--device cuda:2
