@@ -1,37 +1,55 @@
 import os
-import pdb
 import numpy as np
 import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from eval import eval_base_model
+from loss.dilate_loss import dilate_loss
+from eval import eval_base_model, eval_index_model
 import time
 from models.base_models import get_base_model
-from utils import DataProcessor, get_inputs_median
+from utils import DataProcessor
 import random
 from torch.distributions.normal import Normal
-from pdb import set_trace
-torch.backends.cudnn.deterministic = True
+
 class QuantileLoss(torch.nn.Module):
     def __init__(self, quantiles, quantile_weights):
         super().__init__()
         self.quantiles = quantiles
         self.quantile_weights = quantile_weights
         
-    def forward(self, target, pred_mu, pred_sigma):
+    # def forward(self, target, pred_mu, pred_sigma):
+    #     assert not target.requires_grad
+    #     assert pred_mu.size(0) == target.size(0)
+    #     losses = []
+    #     for i, (q, w) in enumerate(zip(self.quantiles, self.quantile_weights)):
+    #         errors = target - Normal(pred_mu, pred_sigma).icdf(q)
+    #         losses.append(
+    #             torch.max(
+    #                (q-1) * errors, 
+    #                q * errors
+    #         ) * w)
+    #     #loss = torch.mean(
+    #     #    torch.sum(torch.cat(losses, dim=1), dim=1))
+    #     loss = torch.mean(torch.cat(losses, dim=1))
+    #     return loss
+    def forward(self, target, pred):
         assert not target.requires_grad
-        assert pred_mu.size(0) == target.size(0)
+        assert pred.size(0) == target.size(0)
         losses = []
-        for i, (q, w) in enumerate(zip(self.quantiles, self.quantile_weights)):
-            errors = target - Normal(pred_mu, pred_sigma).icdf(q)
+        #import pdb; pdb.set_trace()
+        pred = pred.unsqueeze(dim=-2)
+        #import pdb;pdb.set_trace()
+        for i, q in enumerate(self.quantiles):
+
+            errors = target - pred[...,i]
             losses.append(
                 torch.max(
                    (q-1) * errors, 
                    q * errors
-            ) * w)
+            ) )
         #loss = torch.mean(
         #    torch.sum(torch.cat(losses, dim=1), dim=1))
-        # pdb.set_trace()
         loss = torch.mean(torch.cat(losses, dim=1))
+        #import pdb; pdb.set_trace()
         return loss
 
 
@@ -78,25 +96,22 @@ def train_model(
             print('No saved model found')
         best_epoch = -1
         best_metric = np.inf
-    
     net.train()
-    # set_trace()
+
     if net.estimate_type in ['point']:
         mse_loss = torch.nn.MSELoss()
 
     curr_patience = args.patience
     curr_step = 0
-    # set_trace()
     for curr_epoch in range(best_epoch+1, best_epoch+1+epochs):
         epoch_loss, epoch_time = 0., 0.
         for i, data in enumerate(trainloader, 0):
             st = time.time()
-            inputs, target,mask, feats_in, feats_tgt, _, _ = data
+            inputs, target, feats_in, feats_tgt, _, _ = data
             target = target.to(args.device)
-            mask = mask.to(args.device)
             batch_size, N_output = target.shape[0:2]
 
-            #import ipdb ; ipdb.set_trace()
+            #import pdb ; pdb.set_trace()
             # if args.initialization:
             #     target = get_inputs_median(inputs, target).to(args.device)
 
@@ -107,15 +122,10 @@ def train_model(
                 teacher_force = True
             else:
                 teacher_force = False
-
-            if args.nhead >1:
-                mask = mask.transpose(1,0).reshape(-1,N_input,N_input)
-            # import pdb;pdb.set_trace()
-            
             out = net(
                 feats_in.to(args.device), inputs.to(args.device),
                 feats_tgt.to(args.device), target.to(args.device),
-                teacher_force=teacher_force,mask=mask.to(args.device) if args.mask==1 else None
+                teacher_force=teacher_force
             )
             if net.is_signature:
                 if net.estimate_type in ['point']:
@@ -145,11 +155,8 @@ def train_model(
             ]:
                 loss_mse = criterion(target.to(args.device), means.to(args.device))
                 loss = loss_mse
-
-            ## this is for huber loss
-            if model_name in ['trans-huber-ar']:
-                criterion = torch.nn.HuberLoss(reduction='mean',delta=1.0)
-                loss = criterion(target, means)
+            if model_name in ['seq2seqdilate']:
+                loss, loss_shape, loss_temporal = dilate_loss(target, means, args.alpha, args.gamma, args.device)
             if model_name in [
                     'seq2seqnll', 'convnll', 'rnn-nll-nar', 'rnn-nll-ar',
                     'trans-mse-ar', 'trans-nll-ar',
@@ -248,11 +255,25 @@ def train_model(
                 quantiles = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], dtype=torch.float)
                 #quantiles = torch.tensor([0.1, 0.5, 0.9], dtype=torch.float)
                 #quantiles = torch.tensor([0.45, 0.5, 0.55], dtype=torch.float)
+                #quantiles = torch.tensor([0.5],dtype=torch.float)
                 quantile_weights = torch.ones_like(quantiles, dtype=torch.float)
                 #quantile_weights = torch.tensor([1., 1., 1.], dtype=torch.float)
                 loss = QuantileLoss(
                     quantiles, quantile_weights
                 )(target, means, stds)
+
+            if model_name in ['trans-q-ar']:
+                quantiles = torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], dtype=torch.float)
+                #quantiles = torch.tensor([0.1, 0.5, 0.9], dtype=torch.float)
+                #quantiles = torch.tensor([0.45, 0.5, 0.55], dtype=torch.float)
+                #quantiles = torch.tensor([0.5], dtype=torch.float)
+                
+                
+                quantile_weights = torch.ones_like(quantiles, dtype=torch.float)
+                #quantile_weights = torch.tensor([1., 1., 1.], dtype=torch.float)
+                loss = QuantileLoss(
+                    quantiles, quantile_weights
+                )(target, means)
 
                 #loss += torch.mean(stds)
                 #import ipdb
@@ -265,21 +286,12 @@ def train_model(
             if net.is_signature:
                 sig_loss = torch.mean(1. - cos_sim(dec_state, sig_state))
                 loss += sig_loss
-            # pdb.set_trace()
+
+
             epoch_loss += loss.item()
 
             optimizer.zero_grad()
-            # set_trace()
-            
             loss.backward()
-            # total_norm = 0
-            # parameters = [p for p in net.parameters() if p.grad is not None and p.requires_grad]
-            # for p in parameters:
-            #     param_norm = p.grad.detach().data.norm(2)
-            #     total_norm += param_norm.item() ** 2
-            # total_norm = total_norm ** 0.5
-            
-            # torch.nn.utils.clip_grad_norm(net.parameters(),total_norm)
             optimizer.step()
             et = time.time()
             epoch_time += (et-st)
@@ -287,25 +299,24 @@ def train_model(
             #if i>=100:
             #    break
             if (curr_step % args.print_every == 0):
-                outputs_dict, metrics_dict = eval_base_model(
-                    args, model_name, net, devloader, norm, 'val', verbose=1
+                (
+                    _, _, pred_mu, pred_std,
+                    metric_dilate, metric_mse, metric_dtw, metric_tdi,
+                    metric_crps, metric_mae, metric_crps_part, metric_nll, metric_ql
+                )= eval_base_model(
+                    args, model_name, net, devloader, norm, args.gamma, verbose=1
                 )
 
-
-                if 'mse' in model_name:
+                if model_name in ['seq2seqdilate']:
+                    metric = metric_dilate
+                elif 'mse' in model_name:
                     #metric = metric_crps
-                    metric = metrics_dict['metric_mse']
-                elif 'huber' in model_name:
-                    #metric = metric_crps
-                    metric = metrics_dict['metric_mse']
+                    metric = metric_mse
                 elif 'nll' in model_name:
-                    metric = metrics_dict['metric_nll']
+                    metric = metric_nll
                     #metric = metric_crps
                 elif '-q-' in model_name:
-                    metric = metrics_dict['metric_ql']
-                metric_mse, metric_dtw, metric_tdi, metric_crps, metric_mae, metric_smape, total_time = metrics_dict['metric_mse'], metrics_dict['metric_dtw'], metrics_dict['metric_tdi'], metrics_dict['metric_crps'], metrics_dict['metric_mae'], metrics_dict['metric_smape'], metrics_dict['total_time']
-                metric_nll, metric_ql = metrics_dict['metric_nll'], metrics_dict['metric_ql']
-
+                    metric = metric_ql
 
                 #if True:
                 if metric < best_metric:
@@ -326,6 +337,8 @@ def train_model(
                 scheduler.step(metric)
 
                 # ...log the metrics
+                if model_name in ['seq2seqdilate']:
+                    writer.add_scalar('dev_metrics/dilate', metric_dilate, curr_step)
                 writer.add_scalar('dev_metrics/crps', metric_crps, curr_step)
                 writer.add_scalar('dev_metrics/mae', metric_mae, curr_step)
                 writer.add_scalar('dev_metrics/mse', metric_mse, curr_step)
@@ -337,6 +350,8 @@ def train_model(
                 break
 
         # ...log the epoch_loss
+        if model_name in ['seq2seqdilate']:
+            writer.add_scalar('training_loss/DILATE', epoch_loss, curr_epoch)
         if model_name in [
             'seq2seqmse', 'convmse', 'convmsenonar', 'rnn-mse-nar', 'trans-mse-nar', 'rnn-mse-ar',
             'nbeats-mse-nar', 'nbeatsd-mse-nar'
@@ -364,13 +379,17 @@ def train_model(
     net.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     net.eval()
-    # (
-    #     _, _, pred_mu, pred_std,
-    #     metric_dilate, metric_mse, metric_dtw, metric_tdi,
-    #     metric_crps, metric_mae, metric_crps_part, metric_nll, metric_ql
-    # ) 
-    outputs_dict, metrics_dict = eval_base_model(
-        args, model_name, net, devloader, norm, 'val', verbose=1
+    (
+        _, _, pred_mu, pred_std,
+        metric_dilate, metric_mse, metric_dtw, metric_tdi,
+        metric_crps, metric_mae, metric_crps_part, metric_nll, metric_ql
+    ) = eval_base_model(
+        args, model_name, net, devloader, norm, args.gamma, verbose=1
     )
 
-    return
+    if model_name in ['seq2seqdilate']:
+        metric = metric_dilate
+    else:
+        metric = metric_crps
+
+    return metric
