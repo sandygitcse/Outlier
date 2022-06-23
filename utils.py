@@ -14,7 +14,7 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 import time,random
 from pdb import set_trace
 from data.synthetic_dataset import create_synthetic_dataset, create_sin_dataset, SyntheticDataset
-from data.real_dataset import parse_electricity,parse_smd,parse_ett,parse_etthourly,parse_gecco,parse_energy_data
+from data.real_dataset import parse_electricity,parse_smd,parse_ett,parse_etthourly,parse_gecco,parse_energy_data,parse_taxi
 torch.backends.cudnn.deterministic = True
 
 to_float_tensor = lambda x: torch.FloatTensor(x.copy())
@@ -760,6 +760,12 @@ class DataProcessor(object):
                 dev_tsid_map, test_tsid_map,
                 feats_info
             ) = parse_electricity(args.dataset_name, args.N_input, args.N_output, t2v_type=args.t2v_type)
+        elif args.dataset_name in ['taxi']:
+                (
+                data_train, data_dev, data_test,
+                dev_tsid_map, test_tsid_map,
+                feats_info
+            ) = parse_taxi(args.dataset, args.N_input, args.N_output, t2v_type=args.t2v_type)
         
         if args.dataset_name in ['energy']:
             (

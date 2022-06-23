@@ -148,29 +148,40 @@
 # 	--options train dev test
 
 
-python main.py energy \
+# python main.py energy \
+# 	--N_input 336 --N_output 168 \
+# 	--saved_models_dir saved_models/final_results/energy/ \
+# 	--output_dir Results/final_results/energy/\
+# 	--device cuda:1\
+# 	--epochs 50 \
+# 	--mask 0\
+# 	--hidden_size 128\
+# 	--message no_feats+imputation\
+# 	--options train dev test
+
+
+python main.py taxi \
 	--N_input 336 --N_output 168 \
-	--saved_models_dir saved_models/final_results/energy/ \
-	--output_dir Results/final_results/energy/\
-	--device cuda:1\
+	--saved_models_dir saved_models/taxi \
+	--output_dir Results/taxi \
+	--nhead 4 \
+	--mask 0 \
 	--epochs 50 \
-	--mask 0\
-	--hidden_size 128\
-	--message no_feats+test\
+	--device cuda:0 \
+	--message +test \
 	--options test
 
 
 # python main.py electricity \
 # 	--N_input 336 --N_output 168 \
-# 	--saved_models_dir saved_models/final_results/electricity\
-# 	--output_dir Results/final_results/electricity \
+# 	--saved_models_dir saved_models/global_point/electricity\
+# 	--output_dir Results/global_point/electricity \
 # 	--nhead 4\
 # 	--mask 0\
 # 	--epochs 50\
 # 	--device cuda:1\
-# 	--message +imputation_train\
-# 	--options train dev test
-
+# 	--message +global_point_0.3\
+# 	--options test
 
 
 # python main.py smd \

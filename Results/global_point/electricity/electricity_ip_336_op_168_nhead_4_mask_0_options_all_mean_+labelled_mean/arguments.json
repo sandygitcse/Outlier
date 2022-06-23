@@ -1,0 +1,16 @@
+{
+        "saved_dir": "./saved_models/global_point/electricity/electricity_ip_336_op_168_nhead_4_mask_0_options_all_mean_+labelled_mean",
+        "batch_size": 128,
+        "hidden_size": 256,
+        "mask": 0,
+        "nhead": 4,
+        "options": [
+                "test",
+                "train",
+                "dev",
+                "mean"
+        ],
+        "epoch": 50,
+        "lr": 0.0001,
+        "message": "+labelled_mean"
+}
