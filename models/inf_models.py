@@ -12,16 +12,6 @@ import utils
 
 device = 'cuda'
 
-class DILATE(torch.nn.Module):
-    """docstring for DILATE"""
-    def __init__(self, base_models_dict, device):
-        super(DILATE, self).__init__()
-        self.base_models_dict = base_models_dict
-        self.device = device
-
-    def forward(self, feats_in_dict, inputs_dict, feats_tgt_dict, norm_dict, targets_dict=None):
-        return self.base_models_dict[1].to(self.device)(feats_in_dict[1], inputs_dict[1], feats_tgt_dict[1])
-
 class MSE(torch.nn.Module):
     """docstring for MSE"""
     def __init__(self, base_models_dict, device):
@@ -58,25 +48,24 @@ class CNNRNN(torch.nn.Module):
 
 class RNNNLLNAR(torch.nn.Module): # this is currently being used in the transformer 
     """docstring for NLL"""
-    def __init__(self, base_models_dict, device, is_oracle=False, covariance=False,n_quant=1):
+    def __init__(self, base_models_dict, device, is_oracle=False, covariance=False):
         super(RNNNLLNAR, self).__init__()
         self.base_models_dict = base_models_dict
         self.device = device
         self.is_oracle = is_oracle
         self.covariance = covariance
-        self.n_quant = n_quant
 
     def forward(self, dataset, norms, which_split):
-        feats_in = dataset['sum'][1][2].to(self.device)
+        mask = dataset['sum'][1][2].to(self.device)
+        feats_in = dataset['sum'][1][3].to(self.device)
         inputs = dataset['sum'][1][0].to(self.device)
-        feats_tgt = dataset['sum'][1][3].to(self.device)
+        feats_tgt = dataset['sum'][1][4].to(self.device)
         target = dataset['sum'][1][1].to(self.device)
-        #import pdb;pdb.set_trace()
         #if self.is_oracle:
         #    target = dataset['sum'][1][1].to(self.device)
         #else:
         #    target = None
-        ids = dataset['sum'][1][4].cpu()
+        ids = dataset['sum'][1][5].cpu()
 
         mdl = self.base_models_dict['sum'][1]
         with torch.no_grad():
@@ -122,17 +111,10 @@ class RNNNLLNAR(torch.nn.Module): # this is currently being used in the transfor
             pred_d = torch.ones_like(pred_mu) * 1e-9
             pred_v = torch.ones_like(pred_mu) * 1e-9
             pred_std = torch.ones_like(pred_mu) * 1e-9
-        
+
         if which_split in ['test']:
-            #import pdb; pdb.set_trace()
-            if self.n_quant>1:
-                pred = []
-                for i in range(self.n_quant):
-                    pred.append(norms['sum'][1].unnormalize(pred_mu[..., i], ids=ids, is_var=False).unsqueeze(-1))
-                ##  for all quantiles
-                pred_mu = torch.cat(pred,dim=-1)
-            else:
-                pred_mu = norms['sum'][1].unnormalize(pred_mu[..., 0], ids=ids, is_var=False).unsqueeze(-1)
+            pred_mu = norms['sum'][1].unnormalize(pred_mu[..., 0], ids=ids, is_var=False).unsqueeze(-1)
+
         return (pred_mu, pred_d, pred_v, pred_std)
 
 class RNN_MSE_NAR(torch.nn.Module):

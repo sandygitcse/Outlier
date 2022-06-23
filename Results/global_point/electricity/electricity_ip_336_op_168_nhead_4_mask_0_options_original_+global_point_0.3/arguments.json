@@ -1,0 +1,11 @@
+{
+        "saved_dir": "./saved_models/global_point/electricity/electricity_ip_336_op_168_nhead_4_mask_0_options_original_+global_point_0.3",
+        "batch_size": 128,
+        "hidden_size": 256,
+        "mask": 0,
+        "nhead": 4,
+        "options": [],
+        "epoch": 50,
+        "lr": 0.0001,
+        "message": "+global_point_0.3"
+}

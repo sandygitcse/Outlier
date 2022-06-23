@@ -1,0 +1,16 @@
+{
+        "saved_dir": "./saved_models/final_results/energy/energy_ip_336_op_168_nhead_4_mask_1_options_all_mean_no_feats+full_mask",
+        "batch_size": 128,
+        "hidden_size": 128,
+        "mask": 1,
+        "nhead": 4,
+        "options": [
+                "train",
+                "dev",
+                "test",
+                "mean"
+        ],
+        "epoch": 50,
+        "lr": 0.001,
+        "message": "no_feats+full_mask"
+}

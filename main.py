@@ -1,14 +1,13 @@
+from pdb import set_trace
 import sys
 import os
 import argparse
 import numpy as np
 import torch
-from data.synthetic_dataset import create_synthetic_dataset, SyntheticDataset
 from models.base_models import EncoderRNN, DecoderRNN, Net_GRU, NetFullyConnected, get_base_model
 from models.index_models import get_index_model
-from loss.dilate_loss import dilate_loss
 from train import train_model, get_optimizer
-from eval import eval_base_model, eval_inf_model, eval_inf_index_model, eval_aggregates
+from eval import eval_base_model, eval_aggregates
 from torch.utils.data import DataLoader
 import random
 from tslearn.metrics import dtw, dtw_path
@@ -21,10 +20,11 @@ import shutil
 import properscoring as ps
 import scipy.stats
 import itertools
+import GPUtil
 
 from functools import partial
-
-from models import inf_models, inf_index_models
+torch.backends.cudnn.deterministic = True
+# from models import inf_models, inf_index_models
 import utils
 
 os.environ["TUNE_GLOBAL_CHECKPOINT_S"] = "1000000"
@@ -40,6 +40,8 @@ parser.add_argument('dataset_name', type=str, help='dataset_name')
 
 parser.add_argument('--N_input', type=int, default=-1,
                     help='number of input steps')
+parser.add_argument('--dataset', type=str, default=None,
+                    help='new dataset')
 parser.add_argument('--N_output', type=int, default=-1,
                     help='number of output steps')
 
@@ -47,6 +49,8 @@ parser.add_argument('--output_dir', type=str,
                     help='Path to store all raw outputs', default=None)
 parser.add_argument('--saved_models_dir', type=str,
                     help='Path to store all saved models', default=None)
+parser.add_argument('--message', type=str,
+                    help='Message regarding saved models', default=None)
 
 parser.add_argument('--ignore_ckpt', action='store_true', default=False,
                     help='Start the training without loading the checkpoint')
@@ -56,6 +60,10 @@ parser.add_argument('--normalize', type=str, default=None,
                     help='Normalization type (avg, avg_per_series, quantile90, std)')
 parser.add_argument('--epochs', type=int, default=-1,
                     help='number of training epochs')
+parser.add_argument('--options', type=str, nargs='*', default=[],
+                    help='List of places to inject anomaly')
+parser.add_argument('--mask', type=int, default=0,
+                    help='masking the input sequence')
 
 parser.add_argument('--print_every', type=int, default=50,
                     help='Print test output after every print_every epochs')
@@ -73,10 +81,6 @@ parser.add_argument('--fc_units', type=int, default=16, #nargs='+',
 parser.add_argument('--batch_size', type=int, default=-1,
                     help='Input batch size')
 
-parser.add_argument('--gamma', type=float, default=0.01, nargs='+',
-                   help='gamma parameter of DILATE loss')
-parser.add_argument('--alpha', type=float, default=0.5,
-                   help='alpha parameter of DILATE loss')
 parser.add_argument('--teacher_forcing_ratio', type=float, default=1.0,
                    help='Probability of applying teacher forcing to a batch')
 parser.add_argument('--deep_std', action='store_true', default=False,
@@ -98,8 +102,6 @@ parser.add_argument('--v_dim', type=int, default=-1,
 parser.add_argument('--b', type=int, default=-1,
                    help='Number of correlation terms to sample for loss computation during training')
 
-#parser.add_argument('--use_feats', action='store_true', default=False,
-#                    help='Use time features derived from calendar-date and other covariates')
 parser.add_argument('--use_feats', type=int, default=-1,
                     help='Use time features derived from calendar-date and other covariates')
 
@@ -110,31 +112,9 @@ parser.add_argument('--t2v_type', type=str,
 parser.add_argument('--use_coeffs', action='store_true', default=False,
                     help='Use coefficients obtained by decomposition, wavelet, etc..')
 
-
-# Hierarchical model arguments
-parser.add_argument('--L', type=int, default=2,
-                    help='number of levels in the hierarchy, leaves inclusive')
-
-parser.add_argument('--K_list', type=int, nargs='*', default=[],
-                    help='List of bin sizes of each aggregation')
-
-parser.add_argument('--wavelet_levels', type=int, default=2,
-                    help='number of levels of wavelet coefficients')
-parser.add_argument('--fully_connected_agg_model', action='store_true', default=False,
-                    help='If True, aggregate model will be a feed-forward network')
-parser.add_argument('--transformer_agg_model', action='store_true', default=False,
-                    help='If True, aggregate model will be a Transformer')
-parser.add_argument('--plot_anecdotes', action='store_true', default=False,
-                    help='Plot the comparison of various methods')
-parser.add_argument('--save_agg_preds', action='store_true', default=False,
-                    help='Save inputs, targets, and predictions of aggregate base models')
-
 parser.add_argument('--device', type=str,
                     help='Device to run on', default=None)
-
 # parameters for ablation study
-parser.add_argument('--leak_agg_targets', action='store_true', default=False,
-                    help='If True, aggregate targets are leaked to inference models')
 parser.add_argument('--patience', type=int, default=50,
                     help='Stop the training if no improvement shown for these many \
                           consecutive steps.')
@@ -152,29 +132,20 @@ parser.add_argument('--dim_ff', type=int, default=512,
 parser.add_argument('--nhead', type=int, default=4,
                     help='Number of attention heads (in ARTransformerModel)')
 
-
-# Cross-validation parameters
-parser.add_argument('--cv_inf', type=int, default=-1,
-                    help='Cross-validate the Inference models based on score on dev data')
-
-# Learning rate for Inference Model
-parser.add_argument('--lr_inf', type=float, default=-1.,
-                    help='Learning rate for SGD-based inference model')
-
 parser.add_argument('--initialization', type=float, default=-1.,
                     help='=1 for training median prediction model')
-# Number of Quantile Intervals
-parser.add_argument('--n_quant', type=int, default=-1,
-                    help='= 9 Quantile intervals')
 
 
 
 args = parser.parse_args()
 
 #args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# Select the most free device by memory
+devices = GPUtil.getAvailable(order = 'memory', limit = 5, maxLoad = 0.8, maxMemory = 0.8, includeNan=False, excludeID=[], excludeUUID=[])
+# import ipdb; ipdb.set_trace()
+# args.device = torch.device(devices[0])
 
 args.base_model_names = [
-#    'seq2seqdilate',
 #    'seq2seqnll',
 #    'seq2seqmse',
 #    'convmse',
@@ -189,8 +160,9 @@ args.base_model_names = [
 #    'nbeatsd-mse-nar'
 #    'rnn-mse-ar',
 #    'rnn-nll-ar',
-#    'trans-mse-ar',
-#    'trans-nll-ar',
+   'trans-mse-ar',
+     'trans-huber-ar',
+    'trans-nll-ar',
 #    'trans-bvnll-ar',
 #    'trans-nll-atr',
 #    'trans-fnll-ar',
@@ -204,162 +176,18 @@ args.base_model_names = [
 #    'oracle',
 #    'oracleforecast'
 #    'transsig-nll-nar',
-     'trans-q-ar',
-]
-args.aggregate_methods = [
-    'sum',
-#    'sumwithtrend',
-    'slope',
-#    'haar',
-#    'wavelet'
 ]
 
-args.inference_model_names = []
-if 'seq2seqdilate' in args.base_model_names:
-    args.inference_model_names.append('DILATE')
-if 'seq2seqmse' in args.base_model_names:
-    args.inference_model_names.append('MSE')
-    args.inference_model_names.append('seq2seqmse_dualtpp')
-    args.inference_model_names.append('seq2seqmse_optst')
-    args.inference_model_names.append('seq2seqmse_opttrend')
-if 'seq2seqnll' in args.base_model_names:
-    args.inference_model_names.append('NLL')
-    args.inference_model_names.append('seq2seqnll_dualtpp')
-    args.inference_model_names.append('seq2seqnll_optst')
-    args.inference_model_names.append('seq2seqnll_opttrend')
-    #args.inference_model_names.append('seq2seqnll_optklst')
-    #args.inference_model_names.append('seq2seqnll_optkls')
-    #args.inference_model_names.append('seq2seqnll_optklt')
-if 'convmse' in args.base_model_names:
-    args.inference_model_names.append('CNNRNN-MSE')
-    args.inference_model_names.append('convmse_dualtpp')
-    #args.inference_model_names.append('convmse_dualtpp_cf')
-    #args.inference_model_names.append('convmse_optst')
-    #args.inference_model_names.append('convmse_opttrend')
-if 'convnll' in args.base_model_names:
-    args.inference_model_names.append('CNNRNN-NLL')
-    args.inference_model_names.append('convnll_dualtpp')
-    #args.inference_model_names.append('convnll_optst')
-    #args.inference_model_names.append('convnll_opttrend')
-    #args.inference_model_names.append('convnll_optklst')
-    #args.inference_model_names.append('convnll_optkls')
-if 'convmsenonar' in args.base_model_names:
-    args.inference_model_names.append('CNNRNN-NONAR-MSE')
-    args.inference_model_names.append('convmse_nonar_dualtpp')
-    #args.inference_model_names.append('convmse_nonar_dualtpp_cf')
-    #args.inference_model_names.append('convmse_optst')
-    #args.inference_model_names.append('convmse_opttrend')
-   #args.inference_model_names.append('convnll_optklt')
-if 'rnn-aggnll-nar' in args.base_model_names:
-    args.inference_model_names.append('RNN-AGGNLL-NAR')
-if 'rnn-q-nar' in args.base_model_names:
-    args.inference_model_names.append('RNN-Q-NAR')
-if 'rnn-mse-ar' in args.base_model_names:
-    args.inference_model_names.append('RNN-MSE-AR')
-if 'rnn-q-ar' in args.base_model_names:
-    args.inference_model_names.append('RNN-Q-AR')
-if 'trans-mse-nar' in args.base_model_names:
-    args.inference_model_names.append('TRANS-MSE-NAR')
-    #args.inference_model_names.append('convmse_nonar_dualtpp')
-if 'trans-q-nar' in args.base_model_names:
-    args.inference_model_names.append('TRANS-Q-NAR')
-    #args.inference_model_names.append('convmse_nonar_dualtpp')
-if 'trans-q-ar' in args.base_model_names:
-    args.inference_model_names.append('TRANS-Q-AR')
-   
-if 'nbeats-mse-nar' in args.base_model_names:
-    args.inference_model_names.append('NBEATS-MSE-NAR')
-if 'nbeatsd-mse-nar' in args.base_model_names:
-    args.inference_model_names.append('NBEATSD-MSE-NAR')
-if 'rnn-mse-nar' in args.base_model_names:
-    args.inference_model_names.append('RNN-MSE-NAR')
-    #args.inference_model_names.append('rnn-mse-nar_opt-sum')
-    #args.inference_model_names.append('rnn-mse-nar_optcf-sum')
-    #args.inference_model_names.append('rnn-mse-nar_opt-slope')
-    #args.inference_model_names.append('rnn-mse-nar_kl-sum')
-    #args.inference_model_names.append('rnn-mse-nar_kl-st')
-if 'rnn-nll-nar' in args.base_model_names:
-    args.inference_model_names.append('RNN-NLL-NAR')
-    #args.inference_model_names.append('rnn-nll-nar_opt-sum')
-    #args.inference_model_names.append('rnn-nll-nar_optcf-sum')
-    #args.inference_model_names.append('rnn-nll-nar_opt-slope')
-    #args.inference_model_names.append('rnn-nll-nar_opt-st')
-    #args.inference_model_names.append('rnn-nll-nar_kl-sum')
-    args.inference_model_names.append('rnn-nll-nar_kl-st')
-if 'rnn-nll-ar' in args.base_model_names:
-    args.inference_model_names.append('RNN-NLL-AR')
-    #args.inference_model_names.append('rnn-nll-ar_opt-sum')
-    #args.inference_model_names.append('rnn-nll-ar_opt-slope')
-    #args.inference_model_names.append('rnn-nll-ar_opt-st')
-    args.inference_model_names.append('rnn-nll-ar_kl-sum')
-    args.inference_model_names.append('rnn-nll-ar_kl-st')
-if 'trans-mse-ar' in args.base_model_names:
-    args.inference_model_names.append('TRANS-MSE-AR')
-if 'trans-nll-ar' in args.base_model_names:
-    args.inference_model_names.append('TRANS-NLL-AR')
-    #args.inference_model_names.append('trans-nll-ar_opt-sum')
-    #args.inference_model_names.append('trans-nll-ar_optcf-sum')
-    #args.inference_model_names.append('trans-nll-ar_optcf-slope')
-    #args.inference_model_names.append('trans-nll-ar_optcf-haar')
-    #args.inference_model_names.append('trans-nll-ar_optcf-st')
-    #args.inference_model_names.append('trans-nll-ar_opt-slope')
-    #args.inference_model_names.append('trans-nll-ar_opt-st')
-    #args.inference_model_names.append('trans-nll-ar_kl-sum')
-    #args.inference_model_names.append('trans-nll-ar_kl-st')
-    #args.inference_model_names.append('trans-nll-ar_covkl-st')
-if 'trans-bvnll-ar' in args.base_model_names:
-    args.inference_model_names.append('TRANS-BVNLL-AR')
-    #args.inference_model_names.append('trans-bvnll-ar_opt-sum')
-    args.inference_model_names.append('trans-bvnll-ar_optcf-sum')
-    args.inference_model_names.append('trans-bvnll-ar_optcf-slope')
-    #args.inference_model_names.append('trans-bvnll-ar_optcf-haar')
-    args.inference_model_names.append('trans-bvnll-ar_optcf-st')
-    #args.inference_model_names.append('trans-bvnll-ar_opt-slope')
-    #args.inference_model_names.append('trans-bvnll-ar_opt-st')
-    #args.inference_model_names.append('trans-bvnll-ar_kl-sum')
-    #args.inference_model_names.append('trans-bvnll-ar_kl-st')
-if 'trans-nll-atr' in args.base_model_names:
-    args.inference_model_names.append('TRANS-NLL-ATR')
-if 'trans-fnll-ar' in args.base_model_names:
-    args.inference_model_names.append('TRANS-FNLL-AR')
-   #args.inference_model_names.append('trans-nll-ar_kl-st')
-if 'rnn-fnll-nar' in args.base_model_names:
-    args.inference_model_names.append('RNN-FNLL-NAR')
-if 'transm-nll-nar' in args.base_model_names:
-    args.inference_model_names.append('TRANSM-NLL-NAR')
-if 'transm-fnll-nar' in args.base_model_names:
-    args.inference_model_names.append('TRANSM-FNLL-NAR')
-if 'transda-nll-nar' in args.base_model_names:
-    args.inference_model_names.append('TRANSDA-NLL-NAR')
-if 'transda-fnll-nar' in args.base_model_names:
-    args.inference_model_names.append('TRANSDA-FNLL-NAR')
-if 'oracle' in args.base_model_names:
-    args.inference_model_names.append('oracle')
-if 'oracleforecast' in args.base_model_names:
-    args.inference_model_names.append('SimRetrieval')
-if 'transsig-nll-nar' in args.base_model_names:
-    args.inference_model_names.append('TRANSSIG-NLL-NAR')
-
-
-
-
-if args.dataset_name in ['Traffic']:
-    args.alpha = 0.8
 
 if args.dataset_name in ['ECG5000']:
     args.teacher_forcing_ratio = 0.0
 
-if args.dataset_name in ['Solar']:
-    opt_normspace = False
-else:
-    opt_normspace = True
 
 #import ipdb ; ipdb.set_trace()
 if args.dataset_name == 'ett':
-    if args.epochs == -1: args.epochs = 20
+    if args.epochs == -1: args.epochs = 1
     if args.N_input == -1: args.N_input = 192
     if args.N_output == -1: args.N_output = 192
-    if args.K_list == []: args.K_list = []
     #args.K_list = [6]
     if args.saved_models_dir is None:
         args.saved_models_dir = 'saved_models_ett_d192_b24_e192_corrshuffle_bs128_seplayers_nodeczeros_nodecconv_t2v_usefeats_t2vglobal_idx_val20'
@@ -375,9 +203,6 @@ if args.dataset_name == 'ett':
     if args.use_feats == -1: args.use_feats = 1
     #args.t2v_type = 'idx'
     if args.device is None: args.device = 'cuda:2'
-    if args.cv_inf == -1: args.cv_inf = 1
-    if args.lr_inf == -1: args.lr_inf = 0.01
-    #python main.py ett --epochs 20 --N_input 192 --N_output 192 --K_list 6 --saved_models_dir saved_models_ett_d192 --output_dir Outputs_ett_d192_klnorm --normalize zscore_per_series --learning_rate 0.0001 --batch_size 64 --hidden_size 128 --num_grulstm_layers 1 --device cuda:0
 
 elif args.dataset_name == 'taxi30min':
     if args.epochs == -1: args.epochs = 20
@@ -398,15 +223,12 @@ elif args.dataset_name == 'taxi30min':
     if args.b == -1: args.b = 24
     #args.t2v_type = 'mdh_parti'
     if args.device is None: args.device = 'cuda:2'
-    if args.cv_inf == -1: args.cv_inf = 1
-    if args.lr_inf == -1: args.lr_inf = 0.01
 
 elif args.dataset_name == 'etthourly':
     if args.epochs == -1: args.epochs = 50
     if args.N_input == -1: args.N_input = 168
     if args.N_output == -1: args.N_output = 168
     #args.K_list = [12]
-    if args.K_list == []: args.K_list = []
     if args.saved_models_dir is None:
         args.saved_models_dir = 'saved_models_etthourly_noextrafeats_d168_b24_pefix_e168_val20_corrshuffle_seplayers_nodeczeros_nodecconv_t2v'
     if args.output_dir is None:
@@ -421,8 +243,48 @@ elif args.dataset_name == 'etthourly':
     if args.use_feats == -1: args.use_feats = 1
     #args.print_every = 5 # TODO: Only for aggregate models
     if args.device is None: args.device = 'cuda:2'
-    if args.cv_inf == -1: args.cv_inf = 1
-    if args.lr_inf == -1: args.lr_inf = 0.01
+
+elif args.dataset_name == 'gecco':
+    if args.epochs == -1: args.epochs = 50
+    if args.N_input == -1: args.N_input = 360
+    if args.N_output == -1: args.N_output = 360
+    #args.K_list = [12]
+    if args.saved_models_dir is None:
+        args.saved_models_dir = 'saved_models_etthourly_noextrafeats_d168_b24_pefix_e168_val20_corrshuffle_seplayers_nodeczeros_nodecconv_t2v'
+    if args.output_dir is None:
+        args.output_dir = 'Outputs_etthourly_noextrafeats_d168_klnorm_b24_pefix_e168_val20_corrshuffle_seplayers_nodeczeros_nodecconv_t2v'
+    if args.normalize is None: args.normalize = 'zscore_per_series'
+    if args.learning_rate == -1.: args.learning_rate = 0.0001
+    if args.batch_size == -1: args.batch_size = 128
+    if args.hidden_size == -1: args.hidden_size = 256
+    if args.num_grulstm_layers == -1: args.num_grulstm_layers = 1
+    if args.v_dim == -1: args.v_dim = 4
+    if args.b == -1: args.b = 24
+    if args.use_feats == -1: args.use_feats = 1
+    #args.print_every = 5 # TODO: Only for aggregate models
+    if args.device is None: args.device = 'cuda:0'
+
+
+elif args.dataset_name == 'energy':
+    if args.epochs == -1: args.epochs = 50
+    if args.N_input == -1: args.N_input = 360
+    if args.N_output == -1: args.N_output = 360
+    #args.K_list = [12]
+    if args.saved_models_dir is None:
+        args.saved_models_dir = 'saved_models_etthourly_noextrafeats_d168_b24_pefix_e168_val20_corrshuffle_seplayers_nodeczeros_nodecconv_t2v'
+    if args.output_dir is None:
+        args.output_dir = 'Outputs_etthourly_noextrafeats_d168_klnorm_b24_pefix_e168_val20_corrshuffle_seplayers_nodeczeros_nodecconv_t2v'
+    if args.normalize is None: args.normalize = 'zscore_per_series'
+    if args.learning_rate == -1.: args.learning_rate = 0.001
+    if args.batch_size == -1: args.batch_size = 128
+    if args.hidden_size == -1: args.hidden_size = 128
+    if args.num_grulstm_layers == -1: args.num_grulstm_layers = 1
+    if args.v_dim == -1: args.v_dim = 4
+    if args.b == -1: args.b = 24
+    if args.use_feats == -1: args.use_feats = 1
+    #args.print_every = 5 # TODO: Only for aggregate models
+    if args.device is None: args.device = 'cuda:0'
+
 
 elif args.dataset_name == 'azure':
     if args.epochs == -1: args.epochs = 20
@@ -445,7 +307,6 @@ elif args.dataset_name == 'azure':
     if args.use_feats == -1: args.use_feats = 1
     #args.t2v_type = None
     if args.device is None: args.device = 'cuda:0'
-    if args.cv_inf == -1: args.cv_inf = 1
 
 elif args.dataset_name == 'Solar':
     if args.epochs == -1: args.epochs = 20
@@ -466,30 +327,68 @@ elif args.dataset_name == 'Solar':
     if args.b == -1: args.b = 4
     if args.use_feats == -1: args.use_feats = 1
     if args.device is None: args.device = 'cuda:1'
-    if args.cv_inf == -1: args.cv_inf = 1
-    if args.lr_inf == -1: args.lr_inf = 0.001
 
 elif args.dataset_name == 'electricity':
-    if args.epochs == -1: args.epochs = 20
+    if args.epochs == -1: args.epochs = 50
     if args.N_input == -1: args.N_input = 336
     if args.N_output == -1: args.N_output = 168
-    #args.K_list = [12]
-    if args.K_list == []: args.K_list = []
+    
     if args.saved_models_dir is None:
         args.saved_models_dir = 'saved_models_electricity'
     if args.output_dir is None:
         args.output_dir = 'Outputs_electricity'
     if args.normalize is None: args.normalize = 'zscore_per_series'
     if args.learning_rate == -1: args.learning_rate = 0.0001
-    if args.batch_size == -1: args.batch_size = 64
-    if args.hidden_size == -1: args.hidden_size = 128
+    if args.batch_size == -1: args.batch_size = 128
+    if args.hidden_size == -1: args.hidden_size = 256
     if args.num_grulstm_layers == -1: args.num_grulstm_layers = 1
     if args.v_dim == -1: args.v_dim = 4
     if args.b == -1: args.b = 4
     if args.use_feats == -1: args.use_feats = 1
     if args.device is None: args.device = 'cuda:1'
-    if args.cv_inf == -1: args.cv_inf = 1
-    if args.lr_inf == -1: args.lr_inf = 0.01
+
+elif args.dataset_name == 'taxi':
+    if args.epochs == -1: args.epochs = 50
+    if args.N_input == -1: args.N_input = 336
+    if args.N_output == -1: args.N_output = 168
+    if args.dataset is None:
+        args.dataset = "NYC_Taxi"
+    if args.saved_models_dir is None:
+        args.saved_models_dir = 'saved_models_taxi'
+    if args.output_dir is None:
+        args.output_dir = 'Outputs_taxi'
+    if args.normalize is None: args.normalize = 'zscore_per_series'
+    if args.learning_rate == -1: args.learning_rate = 0.0001
+    if args.batch_size == -1: args.batch_size = 128
+    if args.hidden_size == -1: args.hidden_size = 256
+    if args.num_grulstm_layers == -1: args.num_grulstm_layers = 1
+    if args.v_dim == -1: args.v_dim = 4
+    if args.b == -1: args.b = 4
+    if args.use_feats == -1: args.use_feats = 1
+    if args.device is None: args.device = 'cuda:1'
+
+
+elif args.dataset_name == 'smd':
+    if args.epochs == -1: args.epochs = 50
+    if args.N_input == -1: args.N_input = 336
+    if args.N_output == -1: args.N_output = 168
+    
+    #args.K_list = [12]
+    # if args.K_list == []: args.K_list = []
+    if args.saved_models_dir is None:
+        args.saved_models_dir = 'saved_models_smd'
+    if args.output_dir is None:
+        args.output_dir = 'Outputs_smd'
+    if args.normalize is None: args.normalize = 'zscore_per_series'
+    if args.learning_rate == -1: args.learning_rate = 0.0001
+    if args.batch_size == -1: args.batch_size = 128
+    if args.hidden_size == -1: args.hidden_size = 64
+    if args.num_grulstm_layers == -1: args.num_grulstm_layers = 1
+    if args.v_dim == -1: args.v_dim = 4
+    if args.b == -1: args.b = 4
+    if args.use_feats == -1: args.use_feats = 1
+    if args.device is None: args.device = 'cuda:1'
+
 
 elif args.dataset_name == 'aggtest':
     if args.epochs == -1: args.epochs = 1
@@ -510,7 +409,6 @@ elif args.dataset_name == 'aggtest':
     if args.b == -1: args.b = args.N_output
     if args.use_feats == -1: args.use_feats = 1
     if args.device is None: args.device = 'cuda:2'
-    if args.cv_inf == -1: args.cv_inf = 1
 
 
 elif args.dataset_name == 'Traffic911':
@@ -548,8 +446,27 @@ elif args.dataset_name == 'foodinflation':
     if args.b == -1: args.b = 4
     if args.use_feats == -1: args.use_feats = 1
     if args.device is None: args.device = 'cuda:1'
-    if args.cv_inf == -1: args.cv_inf = 1
-    if args.lr_inf == -1: args.lr_inf = 0.01
+
+
+elif args.dataset_name == 'outlier':
+    if args.epochs == -1: args.epochs = 50
+    if args.N_input == -1: args.N_input = 100
+    if args.N_output == -1: args.N_output = 50
+    #args.K_list = [12]
+    if args.K_list == []: args.K_list = []
+    if args.saved_models_dir is None:
+        args.saved_models_dir = 'saved_models/saved_models_outlier'
+    if args.output_dir is None:
+        args.output_dir = 'Outputs/Outputs_foodinflation'
+    if args.normalize is None: args.normalize = 'zscore_per_series'
+    if args.learning_rate == -1: args.learning_rate = 0.0001
+    if args.batch_size == -1: args.batch_size = 64
+    if args.hidden_size == -1: args.hidden_size = 128
+    if args.num_grulstm_layers == -1: args.num_grulstm_layers = 1
+    if args.v_dim == -1: args.v_dim = 4
+    if args.b == -1: args.b = 4
+    if args.use_feats == -1: args.use_feats = 1
+    if args.device is None: args.device = 'cuda:1'
 
 elif args.dataset_name == 'telemetry':
     if args.epochs == -1: args.epochs = 20
@@ -570,13 +487,7 @@ elif args.dataset_name == 'telemetry':
     if args.b == -1: args.b = 4
     if args.use_feats == -1: args.use_feats = 1
     if args.device is None: args.device = 'cuda:1'
-    if args.cv_inf == -1: args.cv_inf = 1
-    if args.lr_inf == -1: args.lr_inf = 0.01
-    if args.n_quant == -1: args.n_quant = 1
-    if args.initialization == -1: args.initialization = 0.0
-#import pdb;pdb.set_trace()
-if 1 not in args.K_list:
-    args.K_list = [1] + args.K_list
+    if args.initialization == -1: args.initialization = 1.
 
 print('Command Line Arguments:')
 print(args)
@@ -588,715 +499,156 @@ base_models_preds = {}
 for name in args.base_model_names:
     base_models[name] = {}
     base_models_preds[name] = {}
-inference_models = {}
-for name in args.inference_model_names:
-    inference_models[name] = {}
 
 
 # DUMP_PATH = '/mnt/infonas/data/pratham/Forecasting/DILATE'
 DUMP_PATH = '.'
-args.output_dir = os.path.join(DUMP_PATH, args.output_dir)
-args.saved_models_dir = os.path.join(DUMP_PATH, args.saved_models_dir)
+if len(args.options)==0:
+    op = "original"
+if "train" in args.options:
+    op = "train"
+if "test" in args.options:
+    op = "test"
+if len(args.options)>=3:
+    op = "all"
+if "mean" in args.options:
+    op=op+"_mean" 
+
+filen = f"{args.dataset_name}_ip_{args.N_input}_op_{args.N_output}_nhead_{args.nhead}_mask_{args.mask}_options_{op}_{args.message}"
+args.output_dir = os.path.join(DUMP_PATH, args.output_dir,filen)
+args.saved_models_dir = os.path.join(DUMP_PATH, args.saved_models_dir,filen)
 os.makedirs(args.output_dir, exist_ok=True)
 os.makedirs(args.saved_models_dir, exist_ok=True)
+dict_args = dict()
+dict_args['saved_dir']=args.saved_models_dir
+dict_args['batch_size']=args.batch_size
+dict_args['hidden_size']=args.hidden_size
+dict_args['mask']=args.mask
+dict_args['nhead']=args.nhead
+dict_args['options']=args.options
+dict_args['epoch']=args.epochs
+dict_args['lr']=args.learning_rate
+dict_args['message'] = args.message
+json_obj = json.dumps(dict_args,indent=8)
+with open(args.output_dir+"/arguments.json",'w+') as files:
+    files.write(json_obj)
 
 
 
+
+# set_trace()
 #dataset = utils.get_processed_data(args)
 data_processor = utils.DataProcessor(args)
 #level2data = dataset['level2data']
 
 # ----- Start: Load all datasets ----- #
 
-dataset = {}
-for agg_method in args.aggregate_methods:
-    dataset[agg_method] = {}
-    for level in args.K_list:
-        if level==1 and agg_method is not 'sum':
-            dataset[agg_method][level] = dataset['sum'][1]
-        else:
-            dataset[agg_method][level] = data_processor.get_processed_data(args, agg_method, level)
+dataset = data_processor.get_processed_data(args)
 
 # ----- End : Load all datasets ----- #
 
-# ----- Start: base models training ----- #
+# ----- Start: Models training ----- #
+# set_trace()
 for base_model_name in args.base_model_names:
     base_models[base_model_name] = {}
     base_models_preds[base_model_name] = {}
 
-    levels = args.K_list
-    aggregate_methods = args.aggregate_methods
-    if base_model_name in ['seq2seqdilate']:
-        levels = [1]
-        aggregate_methods = ['sum']
-
-    for agg_method in aggregate_methods:
-        base_models[base_model_name][agg_method] = {}
-        base_models_preds[base_model_name][agg_method] = {}
-        #level2data = dataset[agg_method]
-
-        if agg_method in ['wavelet']:
-            levels = list(range(1, args.wavelet_levels+3))
-
-        for level in levels:
-            level2data = dataset[agg_method][level]
-            trainloader = level2data['trainloader']
-            devloader = level2data['devloader']
-            testloader = level2data['testloader']
-            feats_info = level2data['feats_info']
-            N_input = level2data['N_input']
-            N_output = level2data['N_output']
-            input_size = level2data['input_size']
-            output_size = level2data['output_size']
-            dev_norm = level2data['dev_norm']
-            test_norm = level2data['test_norm']
-
-            if base_model_name in [
-                'seq2seqmse', 'seq2seqdilate', 'convmse', 'convmsenonar',
-                'rnn-mse-nar', 'rnn-mse-ar', 'trans-mse-nar', 'nbeats-mse-nar',
-                'nbeatsd-mse-nar', 'trans-mse-ar', 'oracle', 'oracleforecast','trans-q-ar'
-            ]:
-                estimate_type = 'point'   #added trans-q-ar
-            elif base_model_name in [
-                'seq2seqnll', 'convnll', 'trans-q-nar', 'rnn-q-nar', 'rnn-q-ar',
-                'rnn-nll-nar', 'rnn-nll-ar', 'rnn-aggnll-nar', 'trans-nll-ar',
-                'transm-nll-nar', 'transda-nll-nar', 'transsig-nll-nar', 'trans-nll-atr'
-            ]:
-                estimate_type = 'variance'
-            elif base_model_name in [
-                'rnn-fnll-nar', 'trans-fnll-ar', 'transm-nll-nar', 'transda-fnll-nar'
-            ]:
-                estimate_type = 'covariance'
-            elif base_model_name in ['trans-bvnll-ar']:
-                estimate_type = 'bivariate'
-
-            saved_models_dir = os.path.join(
-                args.saved_models_dir,
-                args.dataset_name+'_'+base_model_name+'_'+agg_method+'_'+str(level)
-            )
-            os.makedirs(saved_models_dir, exist_ok=True)
-            writer = SummaryWriter(saved_models_dir)
-            saved_models_path = os.path.join(saved_models_dir, 'state_dict_model.pt')
-            print('\n {} {} {}'.format(base_model_name, agg_method, str(level)))
-
-            #import pdb; pdb.set_trace()
-            # Create the network
-            net_gru = get_base_model(
-                args, base_model_name, level,
-                N_input, N_output, input_size, output_size,
-                estimate_type, feats_info
-            )
+    trainloader = dataset['trainloader']
+    devloader = dataset['devloader']
+    testloader = dataset['testloader']
+    feats_info = dataset['feats_info']
+    N_input = dataset['N_input']
+    N_output = dataset['N_output']
+    input_size = dataset['input_size']
+    output_size = dataset['output_size']
+    dev_norm = dataset['dev_norm']
+    test_norm = dataset['test_norm']
     
-            # train the network
-            if agg_method in ['sumwithtrend', 'slope', 'wavelet', 'haar'] and level == 1:
-                base_models[base_model_name][agg_method][level] = base_models[base_model_name]['sum'][1]
-            else:
-                if base_model_name not in ['oracle', 'oracleforecast']:
-                    train_model(
-                        args, base_model_name, net_gru,
-                        level2data, saved_models_path, writer, verbose=1
-                    )
+    if base_model_name in [
+        'seq2seqmse', 'convmse', 'convmsenonar',
+        'rnn-mse-nar', 'rnn-mse-ar', 'trans-mse-nar', 'nbeats-mse-nar',
+        'nbeatsd-mse-nar', 'trans-mse-ar', 'oracle', 'oracleforecast','trans-huber-ar'
+    ]:
+        estimate_type = 'point'
+    elif base_model_name in [
+        'seq2seqnll', 'convnll', 'trans-q-nar', 'rnn-q-nar', 'rnn-q-ar',
+        'rnn-nll-nar', 'rnn-nll-ar', 'rnn-aggnll-nar', 'trans-nll-ar',
+        'transm-nll-nar', 'transda-nll-nar', 'transsig-nll-nar', 'trans-nll-atr'
+    ]:
+        estimate_type = 'variance'
+    elif base_model_name in [
+        'rnn-fnll-nar', 'trans-fnll-ar', 'transm-nll-nar', 'transda-fnll-nar'
+    ]:
+        estimate_type = 'covariance'
+    elif base_model_name in ['trans-bvnll-ar']:
+        estimate_type = 'bivariate'
 
-                base_models[base_model_name][agg_method][level] = net_gru
-
-            writer.flush()
-
-            if args.save_agg_preds and level>=1:
-                testloader = level2data['testloader']
-                test_norm = level2data['test_norm']
-                print(agg_method, level, level2data['N_output'])
-                (
-                    test_inputs, test_target, pred_mu, pred_std,
-                    metric_dilate, metric_mse, metric_dtw, metric_tdi,
-                    metric_crps, metric_mae, metric_crps_part, metric_nll
-                ) = eval_base_model(
-                    args, base_model_name,
-                    base_models[base_model_name][agg_method][level],
-                    testloader, test_norm,
-                    args.gamma, verbose=1
-                )
-                test_target = utils.unnormalize(test_target.detach().numpy(), test_norm, is_var=False)
-                #import pdb;pdb.set_trace()
-                pred_mu = utils.unnormalize(pred_mu.detach().numpy(), test_norm, is_var=False)
-                pred_std = utils.unnormalize(pred_std.detach().numpy(), test_norm, is_var=True)
-
-                output_dir = os.path.join(args.output_dir, args.dataset_name + '_base')
-                os.makedirs(output_dir, exist_ok=True)
-                utils.write_aggregate_preds_to_file(
-                    output_dir, base_model_name, agg_method, level,
-                    utils.unnormalize(test_inputs.detach().numpy(), test_norm, is_var=False),
-                    test_target,#.detach().numpy(),
-                    pred_mu,#.detach().numpy(),
-                    pred_std,#.detach().numpy()
-                )
-
-                # Aggregate level 1 predictions using current aggregation.
-                base_models_preds[base_model_name][agg_method][level] = [pred_mu, pred_std]
-
-                test_target = test_target#.detach().numpy()
-                pred_mu = pred_mu#.detach().numpy()
-                pred_std = pred_std#.detach().numpy()
-                pred_mu_bottom = base_models_preds[base_model_name][agg_method][1][0]#.detach().numpy()
-                pred_std_bottom = base_models_preds[base_model_name][agg_method][1][1]#.detach().numpy()
-                if level != 1:
-                    if agg_method in ['slope']:
-                        pred_mu_agg = utils.aggregate_seqs_slope(pred_mu_bottom, level, is_var=False)
-                        pred_std_agg = np.sqrt(utils.aggregate_seqs_slope(pred_std_bottom**2, level, is_var=True))
-                    elif agg_method in ['sum']:
-                        pred_mu_agg = utils.aggregate_seqs_sum(pred_mu_bottom, level, is_var=False)
-                        pred_std_agg = np.sqrt(utils.aggregate_seqs_sum(pred_std_bottom**2, level, is_var=True))
-                        #import ipdb
-                        #ipdb.set_trace()
-                else:
-                    pred_mu_agg = pred_mu_bottom
-                    pred_std_agg = pred_std_bottom
-
-                mae_agg = np.mean(np.abs(test_target - pred_mu_agg))
-                mae_base = np.mean(np.abs(test_target - pred_mu))
-                mse_agg = np.mean((test_target - pred_mu_agg)**2)
-                mse_base = np.mean((test_target - pred_mu)**2)
-
-                crps_agg = ps.crps_gaussian(
-                    test_target, mu=pred_mu_agg, sig=pred_std_agg
-                ).mean()
-                crps_base = ps.crps_gaussian(
-                    test_target, mu=pred_mu, sig=pred_std
-                ).mean()
-                nll_agg = scipy.stats.norm(
-                    pred_mu_agg, pred_std_agg
-                ).pdf(test_target).mean()
-                nll_base = scipy.stats.norm(
-                    pred_mu, pred_std
-                ).pdf(test_target).mean()
-
-                if level!=1:
-                    h_t = test_inputs.shape[1]
-                    n_e = test_target.shape[1]
-                    plt_dir = os.path.join(
-                        output_dir, 'plots', agg_method,
-                        'level_'+str(level),
-                    )
-                    os.makedirs(plt_dir, exist_ok=True)
-                    for i in range(0, test_inputs.shape[0]):
-                        plt.plot(
-                            np.arange(1, h_t+n_e+1),
-                            np.concatenate([test_inputs[i,:,0][-h_t:], test_target[i,:,0]]),
-                            'ko-'
-                        )
-                        plt.plot(np.arange(h_t+1, h_t+n_e+1), pred_mu[i,:,0], 'bo-')
-                        plt.plot(np.arange(h_t+1, h_t+n_e+1), pred_mu_agg[i,:,0], 'ro-')
-                        plt.savefig(
-                            os.path.join(plt_dir, str(i)+'.svg'),
-                            format='svg', dpi=1200
-                        )
-                        plt.close()
-
-                mae_base_parts = []
-                mae_agg_parts = []
-                mse_base_parts = []
-                mse_agg_parts = []
-                N = test_target.shape[1]
-                p = max(int(N/4), 1)
-                for i in range(0, N, p):
-                    mae_base_parts.append(
-                        np.mean(
-                            np.abs(test_target[:, i:i+p] - pred_mu[:, i:i+p])
-                        )
-                    )
-                    mae_agg_parts.append(
-                        np.mean(
-                            np.abs(test_target[:, i:i+p] - pred_mu_agg[:, i:i+p])
-                        )
-                    )
-                    mse_base_parts.append(
-                        np.mean(
-                            (test_target[:, i:i+p] - pred_mu[:, i:i+p])**2
-                        )
-                    )
-                    mse_agg_parts.append(
-                        np.mean(
-                            (test_target[:, i:i+p] - pred_mu_agg[:, i:i+p])**2
-                        )
-                    )
+    saved_models_dir = os.path.join(
+        args.saved_models_dir,
+        args.dataset_name+'_'+base_model_name
+    )
+    os.makedirs(saved_models_dir, exist_ok=True)
+    writer = SummaryWriter(saved_models_dir)
+    saved_models_path = os.path.join(saved_models_dir, 'state_dict_model.pt')
+    print('\n{} '.format(base_model_name))
 
 
-                print('-------------------------------------------------------')
-                print('{0}, {1}, {2}, mae_base:{3}, mae_agg:{4}'.format(
-                    base_model_name, agg_method, level, mae_base, mae_agg)
-                )
-                print('{0}, {1}, {2}, crps_base:{3}, crps_agg:{4}'.format(
-                    base_model_name, agg_method, level, crps_base, crps_agg)
-                )
-                print('mae_base_parts:', mae_base_parts)
-                print('mae_agg_parts:', mae_agg_parts)
-                print('-------------------------------------------------------')
-                print('{0}, {1}, {2}, mse_base:{3}, mse_agg:{4}'.format(
-                    base_model_name, agg_method, level, mse_base, mse_agg)
-                )
-                print('{0}, {1}, {2}, nll_base:{3}, nll_agg:{4}'.format(
-                    base_model_name, agg_method, level, nll_base, nll_agg)
-                )
-                print('mse_base_parts:', mse_base_parts)
-                print('mse_agg_parts:', mse_agg_parts)
-                print('-------------------------------------------------------')
+    # Create the network
+    # import pdb;pdb.set_trace()
+    net_gru = get_base_model(
+        args, base_model_name, N_input, N_output, input_size, output_size,
+        estimate_type, feats_info,args.nhead
+    )
+
+    # train the network
+    # import pdb;pdb.set_trace()
+    if base_model_name not in ['oracle', 'oracleforecast']:
+        train_model(
+            args, base_model_name, net_gru,
+            dataset, saved_models_path, writer, verbose=1
+        )
+
+    base_models[base_model_name] = net_gru
+
+    writer.flush()
 
 
 writer.close()
             #import ipdb
             #ipdb.set_trace()
-# ----- End: base models training ----- #
+# ----- End: Models training ----- #
 
-# ----- Start: Inference models for bottom level----- #
+# ----- Start: Inference ----- #
 print('\n Starting Inference Models')
 
 #import ipdb
 #ipdb.set_trace()
 
 
-def run_inference_model(
-    args, inf_model_name, base_models, which_split, opt_normspace, agg_method=None, K=None
-):
+def run_inference_model(args, inf_model_name, base_models, which_split):
 
     metric2val = dict()
     infmodel2preds = dict()
 
-    if inf_model_name in ['DILATE']:
-        base_models_dict = base_models['seq2seqdilate']['sum']
-        inf_net = inf_models.DILATE(base_models_dict, device=args.device)
-        inf_test_inputs_dict = test_inputs_dict['sum']
-        inf_test_targets_dict = test_targets_dict_leak['sum']
-        inf_test_norm_dict = test_norm_dict['sum']
-        inf_test_targets = test_targets_dict['sum'][1]
-        inf_norm = test_norm_dict['sum'][1]
-        inf_test_feats_in_dict = test_feats_in_dict['sum']
-        inf_test_feats_tgt_dict = test_feats_tgt_dict['sum']
+    inf_net = base_models[inf_model_name]
 
-    elif inf_model_name in ['RNN-MSE-NAR']:
-        base_models_dict = base_models['rnn-mse-nar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
+    
 
-    elif inf_model_name in ['RNN-NLL-NAR']:
-        base_models_dict = base_models['rnn-nll-nar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['rnn-mse-nar_opt-sum']:
-        base_models_dict = base_models['rnn-mse-nar']
-        agg_method = ['sum'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP(K_list, base_models_dict, agg_method, device=args.device)
-
-    elif inf_model_name in ['rnn-nll-nar_opt-sum']:
-        base_models_dict = base_models['rnn-nll-nar']
-        agg_method = ['sum'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP(K_list, base_models_dict, agg_method, device=args.device)
-
-    elif inf_model_name in ['rnn-nll-nar_optcf-sum']:
-        base_models_dict = base_models['rnn-nll-nar']
-        inf_net = inf_models.DualTPP_CF(args.K_list, base_models_dict, device=args.device)
-
-    elif inf_model_name in ['rnn-mse-nar_optcf-sum']:
-        base_models_dict = base_models['rnn-mse-nar']
-        inf_net = inf_models.DualTPP_CF(args.K_list, base_models_dict, device=args.device)
-
-    elif inf_model_name in ['rnn-mse-nar_opt-slope']:
-        base_models_dict = base_models['rnn-mse-nar']
-        agg_method = ['slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP(K_list, base_models_dict, agg_method, device=args.device)
-
-    elif inf_model_name in ['rnn-nll-nar_opt-slope']:
-        base_models_dict = base_models['rnn-nll-nar']
-        agg_method = ['slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP(K_list, base_models_dict, agg_method, device=args.device)
-
-    elif inf_model_name in ['rnn-nll-nar_opt-st']:
-        base_models_dict = base_models['rnn-nll-nar']
-        agg_method = ['sum', 'slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP(K_list, base_models_dict, agg_method, device=args.device)
-
-    elif inf_model_name in ['rnn-nll-nar_kl-sum']:
-        base_models_dict = base_models['rnn-nll-nar']
-        agg_method = ['sum'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.KLInference(
-            K_list, base_models_dict, agg_method, device=args.device, opt_normspace=opt_normspace
-        )
-
-    elif inf_model_name in ['rnn-nll-nar_kl-st']:
-        base_models_dict = base_models['rnn-nll-nar']
-        agg_method = ['sum', 'slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.KLInference(
-            K_list, base_models_dict, agg_method, device=args.device, opt_normspace=opt_normspace
-        )
-
-    elif inf_model_name in ['RNN-NLL-AR']:
-        base_models_dict = base_models['rnn-nll-ar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['rnn-mse-ar_opt-sum']:
-        base_models_dict = base_models['rnn-mse-ar']
-        agg_method = ['sum'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP(K_list, base_models_dict, agg_method, device=args.device)
-
-    elif inf_model_name in ['rnn-nll-ar_opt-sum']:
-        base_models_dict = base_models['rnn-nll-ar']
-        agg_method = ['sum'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP(K_list, base_models_dict, agg_method, device=args.device)
-
-    elif inf_model_name in ['rnn-mse-ar_optcf-sum']:
-        base_models_dict = base_models['rnn-mse-ar']
-        inf_net = inf_models.DualTPP_CF(args.K_list, base_models_dict, device=args.device)
-
-    elif inf_model_name in ['rnn-mse-ar_opt-slope']:
-        base_models_dict = base_models['rnn-mse-ar']
-        agg_method = ['slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP(K_list, base_models_dict, agg_method, device=args.device)
-
-    elif inf_model_name in ['rnn-nll-ar_opt-slope']:
-        base_models_dict = base_models['rnn-nll-ar']
-        agg_method = ['slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP(K_list, base_models_dict, agg_method, device=args.device)
-
-    elif inf_model_name in ['rnn-nll-ar_opt-st']:
-        base_models_dict = base_models['rnn-nll-ar']
-        agg_method = ['sum', 'slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP(K_list, base_models_dict, agg_method, device=args.device)
-
-    elif inf_model_name in ['rnn-nll-ar_kl-sum']:
-        base_models_dict = base_models['rnn-nll-ar']
-        agg_method = ['sum'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.KLInference(
-            K_list, base_models_dict, agg_method, device=args.device, opt_normspace=opt_normspace
-        )
-
-    elif inf_model_name in ['rnn-nll-ar_kl-st']:
-        base_models_dict = base_models['rnn-nll-ar']
-        agg_method = ['sum', 'slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.KLInference(
-            K_list, base_models_dict, agg_method, device=args.device, opt_normspace=opt_normspace
-        )
-
-    elif inf_model_name in ['TRANS-MSE-AR']:
-        base_models_dict = base_models['trans-mse-ar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['TRANS-NLL-AR']:
-        base_models_dict = base_models['trans-nll-ar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['TRANS-Q-AR']:
-        base_models_dict = base_models['trans-q-ar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device,n_quant=args.n_quant)
-
-    elif inf_model_name in ['trans-nll-ar_opt-sum']:
-        agg_method = ['sum'] if agg_method is None else agg_method
-        base_models_dict = base_models['trans-nll-ar']
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP(K_list, base_models_dict, agg_method, device=args.device)
-
-    elif inf_model_name in ['trans-nll-ar_optcf-sum']:
-        base_models_dict = base_models['trans-nll-ar']
-        agg_method = ['sum'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP_CF(
-            K_list, base_models_dict, agg_method, device=args.device, opt_normspace=False
-        )
-
-    elif inf_model_name in ['trans-nll-ar_optcf-slope']:
-        base_models_dict = base_models['trans-nll-ar']
-        agg_method = ['slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP_CF(
-            K_list, base_models_dict, agg_method, device=args.device, opt_normspace=False
-        )
-
-    elif inf_model_name in ['trans-nll-ar_optcf-haar']:
-        base_models_dict = base_models['trans-nll-ar']
-        agg_method = ['haar'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP_CF(
-            K_list, base_models_dict, agg_method, device=args.device, opt_normspace=False
-        )
-
-    elif inf_model_name in ['trans-nll-ar_optcf-st']:
-        base_models_dict = base_models['trans-nll-ar']
-        agg_method = ['sum', 'slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP_CF(
-            K_list, base_models_dict, agg_method, device=args.device, opt_normspace=False
-        )
-
-    elif inf_model_name in ['trans-nll-ar_opt-slope']:
-        base_models_dict = base_models['trans-nll-ar']
-        agg_method = ['slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP(K_list, base_models_dict, agg_method, device=args.device)
-
-    elif inf_model_name in ['trans-nll-ar_opt-st']:
-        base_models_dict = base_models['trans-nll-ar']
-        agg_method = ['sum', 'slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP(K_list, base_models_dict, agg_method, device=args.device)
-
-    elif inf_model_name in ['trans-nll-ar_kl-sum']:
-        base_models_dict = base_models['trans-nll-ar']
-        agg_method = ['sum'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        #inf_net = inf_models.KLInference(
-        #    K_list, base_models_dict, agg_method, device=args.device, opt_normspace=opt_normspace
-        #)
-        inf_net = inf_models.KLInferenceSGD(
-            K_list, base_models_dict, agg_method, args.lr_inf, device=args.device, opt_normspace=False
-        )
-
-    elif inf_model_name in ['trans-nll-ar_kl-st']:
-        base_models_dict = base_models['trans-nll-ar']
-        agg_method = ['sum', 'slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        #inf_net = inf_models.KLInference(
-        #    K_list, base_models_dict, agg_method, device=args.device, opt_normspace=opt_normspace
-        #)
-        inf_net = inf_models.KLInferenceSGD(
-            K_list, base_models_dict, agg_method, args.lr_inf, device=args.device, opt_normspace=False
-        )
-
-    elif inf_model_name in ['trans-nll-ar_covkl-st']:
-        base_models_dict = base_models['trans-nll-ar']
-        agg_method = ['sum', 'slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        #inf_net = inf_models.KLInference(
-        #    K_list, base_models_dict, agg_method, device=args.device, opt_normspace=opt_normspace
-        #)
-        inf_net = inf_models.KLInferenceSGD(
-            K_list, base_models_dict, agg_method, args.lr_inf, device=args.device, opt_normspace=False,
-            covariance=True
-        )
-
-    elif inf_model_name in ['TRANS-BVNLL-AR']:
-        base_models_dict = base_models['trans-bvnll-ar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['trans-bvnll-ar_opt-sum']:
-        agg_method = ['sum'] if agg_method is None else agg_method
-        base_models_dict = base_models['trans-bvnll-ar']
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP(K_list, base_models_dict, agg_method, device=args.device)
-
-    elif inf_model_name in ['trans-bvnll-ar_optcf-sum']:
-        base_models_dict = base_models['trans-bvnll-ar']
-        agg_method = ['sum'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP_CF(
-            K_list, base_models_dict, agg_method, device=args.device, opt_normspace=False
-        )
-
-    elif inf_model_name in ['trans-bvnll-ar_optcf-slope']:
-        base_models_dict = base_models['trans-bvnll-ar']
-        agg_method = ['slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP_CF(
-            K_list, base_models_dict, agg_method, device=args.device, opt_normspace=False
-        )
-
-    elif inf_model_name in ['trans-bvnll-ar_optcf-haar']:
-        base_models_dict = base_models['trans-bvnll-ar']
-        agg_method = ['haar'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP_CF(
-            K_list, base_models_dict, agg_method, device=args.device, opt_normspace=False
-        )
-
-    elif inf_model_name in ['trans-bvnll-ar_optcf-st']:
-        base_models_dict = base_models['trans-bvnll-ar']
-        agg_method = ['sum', 'slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP_CF(
-            K_list, base_models_dict, agg_method, device=args.device, opt_normspace=False
-        )
-
-    elif inf_model_name in ['trans-bvnll-ar_opt-slope']:
-        base_models_dict = base_models['trans-bvnll-ar']
-        agg_method = ['slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP(K_list, base_models_dict, agg_method, device=args.device)
-
-    elif inf_model_name in ['trans-bvnll-ar_opt-st']:
-        base_models_dict = base_models['trans-bvnll-ar']
-        agg_method = ['sum', 'slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.DualTPP(K_list, base_models_dict, agg_method, device=args.device)
-
-    elif inf_model_name in ['trans-bvnll-ar_kl-sum']:
-        base_models_dict = base_models['trans-bvnll-ar']
-        agg_method = ['sum'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.KLInference(
-            K_list, base_models_dict, agg_method, device=args.device, opt_normspace=opt_normspace
-        )
-
-    elif inf_model_name in ['trans-bvnll-ar_kl-st']:
-        base_models_dict = base_models['trans-bvnll-ar']
-        agg_method = ['sum', 'slope'] if agg_method is None else agg_method
-        K_list = args.K_list if K is None else K
-        inf_net = inf_models.KLInference(
-            K_list, base_models_dict, agg_method, device=args.device, opt_normspace=opt_normspace
-        )
-
-    elif inf_model_name in ['TRANS-NLL-ATR']:
-        base_models_dict = base_models['trans-nll-atr']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['TRANS-FNLL-AR']:
-        base_models_dict = base_models['trans-fnll-ar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['RNN-FNLL-NAR']:
-        base_models_dict = base_models['rnn-fnll-nar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['oracle']:
-        base_models_dict = base_models['oracle']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device, is_oracle=True)
-
-    elif inf_model_name in ['SimRetrieval']:
-        base_models_dict = base_models['oracleforecast']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device, is_oracle=True)
-
-    elif inf_model_name in ['TRANSSIG-NLL-NAR']:
-        base_models_dict = base_models['transsig-nll-nar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['TRANSM-NLL-NAR']:
-        base_models_dict = base_models['transm-nll-nar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['TRANSM-FNLL-NAR']:
-        base_models_dict = base_models['transm-fnll-nar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['TRANSDA-NLL-NAR']:
-        base_models_dict = base_models['transda-nll-nar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['TRANSDA-FNLL-NAR']:
-        base_models_dict = base_models['transda-fnll-nar']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-
-    elif inf_model_name in ['RNN-AGGNLL-NAR']:
-        base_models_dict = base_models['rnn-aggnll-nar']['sum']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-        inf_test_inputs_dict = test_inputs_dict['sum']
-        inf_test_targets_dict = test_targets_dict_leak['sum']
-        #inf_test_norm_dict = test_norm_dict['sum']
-        inf_test_norm_dict = None
-        inf_test_targets = test_targets_dict['sum'][1]
-        #inf_norm = test_norm_dict['sum'][1]
-        inf_norm = lvl_data['test_norm']
-        inf_test_feats_in_dict = test_feats_in_dict['sum']
-        inf_test_feats_tgt_dict = test_feats_tgt_dict['sum']
-
-    elif inf_model_name in ['RNN-Q-NAR']:
-        base_models_dict = base_models['rnn-q-nar']['sum']
-        raise NotImplementedError
-
-    elif inf_model_name in ['RNN-MSE-AR']:
-        base_models_dict = base_models['rnn-mse-ar']['sum']
-        raise NotImplementedError
-
-    elif inf_model_name in ['RNN-Q-AR']:
-        base_models_dict = base_models['rnn-q-ar']['sum']
-        raise NotImplementedError
-
-    elif inf_model_name in ['TRANS-MSE-NAR']:
-        base_models_dict = base_models['trans-mse-nar']['sum']
-        raise NotImplementedError
-
-    elif inf_model_name in ['TRANS-Q-NAR']:
-        base_models_dict = base_models['trans-q-nar']['sum']
-        raise NotImplementedError
-
-    elif inf_model_name in ['NBEATS-MSE-NAR']:
-        base_models_dict = base_models['nbeats-mse-nar']['sum']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-        inf_test_inputs_dict = test_inputs_dict['sum']
-        inf_test_targets_dict = test_targets_dict_leak['sum']
-        #inf_test_norm_dict = test_norm_dict['sum']
-        inf_test_norm_dict = None
-        inf_test_targets = test_targets_dict['sum'][1]
-        #inf_norm = test_norm_dict['sum'][1]
-        inf_norm = lvl_data['test_norm']
-        inf_test_feats_in_dict = test_feats_in_dict['sum']
-        inf_test_feats_tgt_dict = test_feats_tgt_dict['sum']
-        inf_test_coeffs_in_dict = test_coeffs_in_dict['sum']
-
-    elif inf_model_name in ['NBEATSD-MSE-NAR']:
-        base_models_dict = base_models['nbeatsd-mse-nar']['sum']
-        inf_net = inf_models.RNNNLLNAR(base_models_dict, device=args.device)
-        inf_test_inputs_dict = test_inputs_dict['sum']
-        inf_test_targets_dict = test_targets_dict_leak['sum']
-        #inf_test_norm_dict = test_norm_dict['sum']
-        inf_test_norm_dict = None
-        inf_test_targets = test_targets_dict['sum'][1]
-        #inf_norm = test_norm_dict['sum'][1]
-        inf_norm = lvl_data['test_norm']
-        inf_test_feats_in_dict = test_feats_in_dict['sum']
-        inf_test_feats_tgt_dict = test_feats_tgt_dict['sum']
-        inf_test_coeffs_in_dict = test_coeffs_in_dict['sum']
-
-    elif inf_model_name in ['rnn-mse-nar_dualtpp']:
-        base_models_dict = base_models['rnn-mse-nar']['sum']
-        inf_net = inf_models.DualTPP(args.K_list, base_models_dict, device=args.device)
-        inf_test_inputs_dict = test_inputs_dict['sum']
-        inf_test_targets_dict = test_targets_dict_leak['sum']
-        inf_test_norm_dict = test_norm_dict['sum']
-        inf_test_targets = test_targets_dict['sum'][1]
-        inf_norm = test_norm_dict['sum'][1]
-        inf_test_feats_in_dict = test_feats_in_dict['sum']
-        inf_test_feats_tgt_dict = test_feats_tgt_dict['sum']
-
-    elif inf_model_name in ['rnn-mse-nar_dualtpp_cf']:
-        base_models_dict = base_models['rnn-mse-nar']['sum']
-        inf_net = inf_models.DualTPP_CF(args.K_list, base_models_dict, device=args.device)
-        inf_test_inputs_dict = test_inputs_dict['sum']
-        inf_test_targets_dict = test_targets_dict_leak['sum']
-        inf_test_norm_dict = test_norm_dict['sum']
-        inf_test_targets = test_targets_dict['sum'][1]
-        inf_norm = test_norm_dict['sum'][1]
-        inf_test_feats_in_dict = test_feats_in_dict['sum']
-        inf_test_feats_tgt_dict = test_feats_tgt_dict['sum']
-
-    if not args.leak_agg_targets:
-        inf_test_targets_dict = None
-    #import pdb;pdb.set_trace()
     inf_net.eval()
-    (
-        inputs, target, pred_mu, pred_std, pred_d, pred_v,
-        metric_mse, metric_dtw, metric_tdi, metric_crps, metric_mae, metric_smape,
-        total_time
-    ) = eval_inf_model(args, inf_net, dataset, which_split, args.gamma, verbose=1)
+    outputs_dict, metrics_dict = eval_base_model(
+        args, inf_model_name, inf_net, dataset['testloader'],
+        dataset['test_norm'], 'test'
+    )
+    inputs, target = outputs_dict['inputs'], outputs_dict['target']
+    pred_mu, pred_std, pred_d, pred_v = outputs_dict['pred_mu'], outputs_dict['pred_std'], outputs_dict['pred_d'], outputs_dict['pred_v']
+    metric_mse, metric_dtw, metric_tdi, metric_crps, metric_mae, metric_smape, total_time = metrics_dict['metric_mse'], metrics_dict['metric_dtw'], metrics_dict['metric_tdi'], metrics_dict['metric_crps'], metrics_dict['metric_mae'], metrics_dict['metric_smape'], metrics_dict['total_time']
 
-    if inf_net.covariance == False:
-        pred_v_foragg = None
-    else:
-        pred_v_foragg = pred_v
     #import ipdb ; ipdb.set_trace()
     agg2metrics = eval_aggregates(
-        inputs, target, pred_mu, pred_std, pred_d, pred_v_foragg
+        inputs, target, pred_mu, pred_std, pred_d, pred_v
     )
 
-    inference_models[inf_model_name] = inf_net
-    metric_mse = metric_mse.item()
+    # inference_models[inf_model_name] = inf_net
 
     print('Metrics for Inference model {}: MAE:{:f}, CRPS:{:f}, MSE:{:f}, SMAPE:{:f}, Time:{:f}'.format(
         inf_model_name, metric_mae, metric_crps, metric_mse, metric_smape, total_time)
@@ -1324,49 +676,10 @@ def run_inference_model(
 
 model2metrics = dict()
 model2aggmetrics = dict()
-for inf_model_name in args.inference_model_names:
+for inf_model_name in args.base_model_names:
 
-    if args.cv_inf:
-        # Consider all possible combinations of aggregate methods
-        aggregate_methods = []
-        for l in range(1, len(args.aggregate_methods)+1):
-            aggregate_methods += list(itertools.combinations(args.aggregate_methods, l))
-        # Single value of K is used in a hyper-parameter config for inference model
-        K_list = []
-        if len(args.K_list) == 1:
-            K_list = [args.K_list]
-        else:
-            for K in args.K_list:
-                if K != 1:
-                    K_list.append([1, K])
-
-        hparam_configs = list(itertools.product(aggregate_methods, K_list))
-
-        hparams2metrics = []
-        for agg_method, K in hparam_configs:
-            print('cv with agg_method, K:', agg_method, K)
-            metric2val, agg2metrics = run_inference_model(
-                args, inf_model_name, base_models, 'dev', opt_normspace,
-                agg_method, K
-            )
-            hparams2metrics.append(metric2val)
-        cv_metric =  'crps'
-        best_cfg_idx, _ = min(enumerate(hparams2metrics), key=lambda x: x[1]['crps'])
-        print(
-            'best_cfg_idx:', best_cfg_idx,
-            'best_agg_method and best K:', hparam_configs[best_cfg_idx],
-        )
         metric2val, agg2metrics = run_inference_model(
-            args, inf_model_name, base_models, 'test', opt_normspace,
-            hparam_configs[best_cfg_idx][0],
-            hparam_configs[best_cfg_idx][1]
-        )
-        model2metrics[inf_model_name] = metric2val
-        model2aggmetrics[inf_model_name] = agg2metrics
-    else:
-        #raise NotImplementedError
-        metric2val, agg2metrics = run_inference_model(
-            args, inf_model_name, base_models, 'test', opt_normspace
+            args, inf_model_name, base_models, 'test'
         )
         model2metrics[inf_model_name] = metric2val
         model2aggmetrics[inf_model_name] = agg2metrics
@@ -1387,116 +700,10 @@ with open(os.path.join(args.output_dir, 'results_'+args.dataset_name+'.txt'), 'w
             )
         )
 
-with open(os.path.join(args.output_dir, 'results_agg_'+args.dataset_name+'.txt'), 'w') as fp:
-
-    fp.write('\nModel Name, MAE, CRPS, MSE')
-    for model_name, agg2metrics in model2aggmetrics.items():
-        for agg, K2metrics in agg2metrics.items():
-            for K, metrics_dict in K2metrics.items():
-                fp.write(
-                    '\n{}, {}, {}, {:.6f}, {:.6f}, {:.6f}'.format(
-                        model_name,
-                        agg, K,
-                        round(metrics_dict['mae'], 3),
-                        round(metrics_dict['crps'], 3),
-                        round(metrics_dict['mse'], 3),
-                        #metrics_dict['dtw'],
-                        #metrics_dict['tdi'],
-                    )
-                )
-
 for model_name, metrics_dict in model2metrics.items():
     for metric, metric_val in metrics_dict.items():
         model2metrics[model_name][metric] = str(metric_val)
 with open(os.path.join(args.output_dir, 'results_'+args.dataset_name+'.json'), 'w') as fp:
     json.dump(model2metrics, fp)
 
-# ----- End: Inference models for bottom level----- #
-
-
-# ----- Start: Base models for all aggreagations and levels --- #
-
-model2metrics = {}
-for base_model_name in args.base_model_names:
-    for agg_method in args.aggregate_methods:
-        for K in args.K_list:
-
-            print('Base Model', base_model_name,'for', agg_method, K)
-    
-            loader = dataset[agg_method][K]['testloader']
-            norm = dataset[agg_method][K]['test_norm']
-            (
-                test_inputs, test_target, pred_mu, pred_std,
-                metric_dilate, metric_mse, metric_dtw, metric_tdi,
-                metric_crps, metric_mae, metric_crps_part, metric_nll, metric_ql
-            ) = eval_base_model(
-                args, base_model_name, base_models[base_model_name][agg_method][K],
-                loader, norm, args.gamma, verbose=1, unnorm=True
-            )
-
-            output_dir = os.path.join(args.output_dir, args.dataset_name + '_base')
-            os.makedirs(output_dir, exist_ok=True)
-            utils.write_aggregate_preds_to_file(
-                output_dir, base_model_name, agg_method, K,
-                test_inputs, test_target, pred_mu, pred_std
-            )
-
-            model2metrics = utils.add_base_metrics_to_dict(
-                model2metrics, agg_method, K, base_model_name,
-                metric_mse, metric_dtw, metric_tdi, metric_crps, metric_mae
-            )
-
-
-with open(os.path.join(args.output_dir, 'results_base_'+args.dataset_name+'.txt'), 'w') as fp:
-
-    fp.write('\nModel Name, MAE, DTW, TDI')
-    for agg_method in model2metrics.keys():
-        for K in model2metrics[agg_method].keys():
-            for model_name, metrics_dict in model2metrics[agg_method][K].items():
-                fp.write(
-                    '\n{}, {}, {}, {:.6f}, {:.6f}, {:.6f}, {:.6f}, {:.6f}'.format(
-                        agg_method, K, model_name,
-                        metrics_dict['mae'],
-                        metrics_dict['crps'],
-                        metrics_dict['mse'],
-                        metrics_dict['dtw'],
-                        metrics_dict['tdi'],
-                    )
-                )
-
-for model_name, metrics_dict in model2metrics.items():
-    for metric, metric_val in metrics_dict.items():
-        model2metrics[model_name][metric] = str(metric_val)
-with open(os.path.join(args.output_dir, 'results_base_'+args.dataset_name+'.json'), 'w') as fp:
-    json.dump(model2metrics, fp)
-
-# ----- End: Base models for all aggreagations and levels --- #
-
-
-# ----- Start: Aggreagation of Inference model outputs for all aggreagations and levels --- #
-
-# ----- End: Aggreagation of Inference model outputs for all aggreagations and levels --- #
-
-
-# Visualize results
-
-if args.plot_anecdotes:
-    for ind in range(1,51):
-        plt.figure()
-        plt.rcParams['figure.figsize'] = (16.0,8.0)
-        k = 1
-        for inf_mdl_name, pred_mu in infmodel2preds.items():
-
-            input = test_inputs_dict['sum'][1].detach().cpu().numpy()[ind,:,:]
-            target = test_targets_dict['sum'][1].detach().cpu().numpy()[ind,:,:]
-            pred_mu = pred_mu.detach().cpu().numpy()[ind,:,:]
-
-            plt.subplot(len(inference_models),1,k)
-            plt.plot(range(0,args.N_input) ,input,label='input',linewidth=3)
-            plt.plot(range(args.N_input-1,args.N_input+args.N_output), np.concatenate([ input[args.N_input-1:args.N_input], target ]) ,label='target',linewidth=3)
-            plt.plot(range(args.N_input-1,args.N_input+args.N_output),  np.concatenate([ input[args.N_input-1:args.N_input], pred_mu ])  ,label=inf_mdl_name,linewidth=3)
-            plt.xticks(range(0,40,2))
-            plt.legend()
-            k = k+1
-
-        plt.show()
+# ----- End: Inference ----- #

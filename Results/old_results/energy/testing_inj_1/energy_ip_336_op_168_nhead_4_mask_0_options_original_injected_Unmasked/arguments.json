@@ -1,0 +1,11 @@
+{
+        "saved_dir": "./saved_models/energy/testing_inj_1/energy_ip_336_op_168_nhead_4_mask_0_options_original_injected_Unmasked",
+        "batch_size": 128,
+        "hidden_size": 128,
+        "mask": 0,
+        "nhead": 4,
+        "options": [],
+        "epoch": 50,
+        "lr": 0.0001,
+        "message": "injected_Unmasked"
+}
